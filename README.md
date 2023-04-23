@@ -33,7 +33,7 @@ IV. Visualizations of the results
 
 **Reproducing the Analysis**
 
-To reproduce the analysis, clone the repository and run the R script. The necessary packages are listed in the beginnng of the file.
+To reproduce the analysis, clone the repository and run the Rmd. The necessary packages are listed in the beginnng of the file.
 
 **Conclusion**
 
