@@ -26,8 +26,11 @@ The following data sources were used in the analysis:
 The code for the analysis is written in R and is presented in an Rmd notebook which covers the following:
 
 I. Data pre-processing and cleaning of air pollution, station location and weather data
+
 II. Exploratory data analysis
+
 III. Regression (Difference-in-Differences) analysis 
+
 IV. Visualizations of the results
 
 
