@@ -7,9 +7,9 @@ This repository contains the code and data used in my Master Thesis. Through an 
 
 The following data sources were used in the analysis:
 
-- Air quality data for the City of Madrid Air Quality Monitoring Network (csv) 
+- Air quality data for the Air Quality Monitoring Network of the City of Madrid with *hourly* frequency (csv) 
 
-- Air quality data for the Community of Madrid Air Quality Monitoring Network, excluding the City of Madrid (csv)
+- Air quality data for the Air Quality Monitoring Network of the Community of Madrid, excluding the City of Madrid with *hourly* frequency (csv)
 
 - Data on air quality monitoring stations in the City of Madrid (csv)
 
@@ -19,9 +19,13 @@ The following data sources were used in the analysis:
 
 - Data on the Madrid administrative boundaries (GeoJSON)
 
-- Weather data for the Community of Madrid (AEMET API)
+- Weather data for the Community of Madrid with *daily* frequency (AEMET API)
 
 - Data on weather stations in the Community of Madrid, including the City of Madrid (AEMET API)
+
+- Noise pollution data for the Monitoring Network of the City of Madrid with *monthly* frequency (csv) 
+
+- Data on noise quality monitoring stations in the City of Madrid (csv)
 
 **Code**
 
@@ -31,7 +35,7 @@ I. Pre-processing of air pollution and station location data
 
 II. Exploratory data analysis
 
-III. Pre-processing and imputation of weather data 
+III. Pre-processing, imputation and descriptive analysis of weather data 
 
 IV. Difference-in-Differences Regression: results and analysis 
 
