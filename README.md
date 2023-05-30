@@ -29,7 +29,7 @@ The following data sources were used in the analysis:
 
 **Code**
 
-The code for the analysis is written in R and is presented in an Rmd notebook which covers the following:
+The code for the analysis is written in R and is presented in an Rmd notebook named 'Elena_TFM_code' which covers the following:
 
 I. Pre-processing of air pollution and station location data
 
