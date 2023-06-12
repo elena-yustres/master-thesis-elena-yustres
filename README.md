@@ -7,25 +7,25 @@ This repository contains the code and data used in my Master's Thesis. Through a
 
 The following data sources were used in the analysis:
 
-- Air quality data for the Air Quality Monitoring Network of the City of Madrid with *hourly* frequency (csv, 2012 - 2022) 
+- Air quality data for the Air Quality Monitoring Network of the City of Madrid with *hourly* frequency (*csv*, 2012 - 2022) 
 
-- Air quality data for the Air Quality Monitoring Network of the Community of Madrid, excluding the City of Madrid, with *hourly* frequency (csv, 2012 - 2022)
+- Air quality data for the Air Quality Monitoring Network of the Community of Madrid, excluding the City of Madrid, with *hourly* frequency (*csv*, 2012 - 2022)
 
-- Data on air quality monitoring stations in the City of Madrid (csv)
+- Data on air quality monitoring stations in the City of Madrid (*csv*)
 
-- Data on air quality monitoring stations in the Community of Madrid of Madrid, excluding the City of Madrid (csv)
+- Data on air quality monitoring stations in the Community of Madrid of Madrid, excluding the City of Madrid (*csv*)
 
-- Data on the LEZ perimeter (shp)
+- Data on the LEZ perimeter (*shp*)
 
-- Data on the Madrid administrative boundaries (GeoJSON)
+- Data on the Madrid administrative boundaries (*GeoJSON*)
 
-- Weather data for the Community of Madrid with *daily* frequency (AEMET API, 2012 - 2021)
+- Weather data for the Community of Madrid with *daily* frequency (*AEMET API*, 2012 - 2021)
 
-- Data on weather stations in the Community of Madrid, including the City of Madrid (AEMET API)
+- Data on weather stations in the Community of Madrid, including the City of Madrid (*AEMET API*)
 
-- Noise pollution data for the Monitoring Network of the City of Madrid with *monthly* frequency (csv, 2015 - 2021) 
+- Noise pollution data for the Monitoring Network of the City of Madrid with *monthly* frequency (*csv*, 2015 - 2021) 
 
-- Data on noise quality monitoring stations in the City of Madrid (csv)
+- Data on noise quality monitoring stations in the City of Madrid (*csv*)
 
 **Code**
 
