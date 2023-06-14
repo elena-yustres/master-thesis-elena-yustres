@@ -19,13 +19,13 @@ knitr::opts_chunk$set(echo = TRUE, cache = FALSE, warning = FALSE, message = FAL
 
 ## INTRODUCTION
 
-The objective of my thesis is to identify the existence (and if so, measure the magnitude) of geographical pollution spillovers arising from the implementation in 2018 of the Madrid Central low emission zone (LEZ) from an empirical perspective. 
+The objective of my thesis is to identify the existence (and if so, measure the magnitude) of geographical pollution spillovers arising from the implementation in 2018 of the Madrid Central low emission zone (LEZ) through an empirical approach. 
 
 In this markdown file, I present the code used to reach the analyses and conclusions summarised in the dissertation “Beyond the Zone: Assessing Spillover Effects of Madrid Central on Air Pollution” (hereinafter "the main document").
 
-The report is structured as follows. Section 1 includes the pre-processing of the data (both pollution measures and information about pollution monitoring stations, inside the City of Madrid and outside the City but within the Community of Madrid). Section 2 performs a descriptive analysis of pollution measurements by station, location (i.e. inside as opposed to outside the City) and year, as well as of the location of stations with respect to the LEZ borders and the perimeter of the Community. Section 3 presents visually the identification strategy used to isolate the causal effect of Madrid Central on pollution outside its perimeter. Section 4 introduces our control (weather) variables, which involves data wrangling, imputation of missing values and descriptive analysis by means of visualizations. Section 5 contains a series of Difference-in-Differences (DiD) models used to answer our research question, which follow some pre-modelling feature engineering and assumption-checking plots. Finally, Sections 6 and 7 include robustness checks and the appendix, respectively.
+The report is structured as follows. Section 1 includes the pre-processing of the data (both pollution measures and information about pollution monitoring stations). Section 2 performs a descriptive analysis of pollution measurements by station, location and year, as well as of the location of stations with respect to the LEZ borders and the perimeter of the Community of Madrid. Section 3 presents visually the identification strategy. Section 4 introduces our model control variables, involving data wrangling, imputation of missing values and descriptive analysis by means of visualizations. Section 5 contains a series of Difference-in-Differences (DiD) models used to answer our research question, which follow some pre-modelling feature engineering and assumption-checking plots. Finally, Sections 6 and 7 encompass robustness checks and the appendix, respectively.
 
-We begin by loading the necessary libraries for our analysis. Some of them are used for data visualization and manipulation, such as `tidyverse`, `ggplot2`, `ggdag`, `lubridate` or `forcats`. Others are used for geospatial analysis, mapping and visualization, namely `geosphere`, `sf`, `mapview`, `ggmap` and `maptools`. Additionally, we need libraries for statistical analysis, in our case `plm`, `lmtest`, `estimatr`, `fixest` and `mice`. Lastly, we load libraries for formatting and output, such as `stargazer`, `cowplot`, `corrplot`, `knitr` and `kableExtra`. We use `vistime()`and `highcharter()` to display the policy timeline in the Appendix.
+We begin by loading the necessary libraries for our analysis. Some of them are used for data visualization and manipulation, such as `tidyverse`, `ggplot2`, `ggdag`, `lubridate` or `forcats`. Others are used for geospatial analysis, mapping and visualization, namely `geosphere`, `sf`, `mapview`, `ggmap` and `maptools`. Additionally, we need libraries for statistical analysis, in our case `plm`, `lmtest`, `estimatr`, `fixest` and `mice`. Lastly, we load libraries for formatting and output like `stargazer`, `cowplot`, `corrplot`, `knitr` and `kableExtra`. We use `vistime()`and `highcharter()` to display the policy timeline in the Appendix.
 
 ```{r, include = TRUE, results = FALSE}
 library(tidyverse)
@@ -59,11 +59,11 @@ library(highcharter)
 
 ### 1.1. Pollution data for pollution monitoring stations inside the City of Madrid (2015 - 2022)
 
-We download hourly pollution data from the [data portal of the City Council](https://datos.madrid.es/portal/site/egob/menuitem.c05c1f754a33a9fbe4b2e4b284f1a5a0/?vgnextoid=f3c0f7d512273410VgnVCM2000000c205a0aRCRD&vgnextchannel=374512b9ace9f310VgnVCM100000171f5a0aRCRD&vgnextfmt=default) for 24 different pollution monitoring stations in the City of Madrid for all months from 2015 up to and including 2022 (data available since 2001).
+We download hourly pollution data from the [data portal of the City Council](https://datos.madrid.es/portal/site/egob/menuitem.c05c1f754a33a9fbe4b2e4b284f1a5a0/?vgnextoid=f3c0f7d512273410VgnVCM2000000c205a0aRCRD&vgnextchannel=374512b9ace9f310VgnVCM100000171f5a0aRCRD&vgnextfmt=default) for 24 different pollution monitoring stations in the City of Madrid for all months between January 2015 and December 2022 (data is available since 2001).
 
-We first create a loop to read pollution data for all years and apply data cleaning to get to a dataframe called 'all_city_data_clean'. Important steps in this process include renaming and selecting relevant columns, transforming the data from wide to long format, filtering the dataframe for NO~2~ (nitrogen dioxide, measured in micrograms per cubic metre or  µg/m<sup>3</sup>) measures and adjusting variable types. We then aggregate the data to the monthly level ('city_monthly').
+We first create a loop to read pollution data for all years and clean the data to get to a dataframe called 'all_city_data_clean'. Important steps in this process include renaming and selecting relevant columns, transforming the data from wide to long format, filtering the dataframe for NO~2~ (nitrogen dioxide, measured in micrograms per cubic metre or µg/m<sup>3</sup>) measures and adjusting variable types. We then aggregate the data to the monthly level ('city_monthly').
 
-Also, we are interested in checking whether there are any stations with less than 18 observations per day and 270 observations per year (around 75% of total observations). We find that only the pollution monitoring station in Arturo Soria (station code 16) has less than 270 observations per year (264). However, we can see that this is only the case for 2022 and we will not use observations from this year for reasons introduced later. Hence, we do not remove the data yet to ensure comparability with the Community dataset (Section 1.2).
+Also, we are interested in checking whether there are any stations with fewer than 18 observations per day and 270 observations per year (around 75% of total observations). We find that only the pollution monitoring station in Arturo Soria (station code 16) has fewer than 270 observations per year (264). However, we can see that this is only the case for 2022 and we will not use observations from this year for reasons introduced later. Hence, we do not remove the data yet to ensure comparability with the Community dataset (Section 1.2).
 
 ```{r}
 # `For` loop for hourly data for all months in all years
@@ -111,10 +111,10 @@ for (file_name in file_names) {
     mutate(month = as.numeric(month), 
            day = as.numeric(day),
            hour = as.numeric(str_replace(hour, "H", "")),
-           #remove leading zeros from 'code' variables
+           # Remove leading zeros from 'code' variables
            town_code = as.factor(str_remove(town_code, "^0+")),
            station_code = as.factor(str_remove(station_code, "^0+")),
-           #replace comma with point for 'pollution_level'
+           # Replace comma with point for 'pollution_level'
            pollution_level = as.numeric(gsub(",", ".", pollution_level)))
     
   # Append the cleaned data to the 'all_city_data_clean' dataframe
@@ -130,6 +130,8 @@ stations_to_exclude <- all_city_data_clean %>%
             n_obs_per_day = mean(n_obs)) %>%
   filter(n_obs_per_day < 18 | n_obs_per_year < 270) 
 
+print(stations_to_exclude)
+
 # Aggregate the data to monthly level
 city_monthly <- all_city_data_clean %>% 
   group_by(town_code, station_code, year, month) %>% 
@@ -139,7 +141,7 @@ city_monthly <- all_city_data_clean %>%
 
 ### 1.2. Pollution data for pollution monitoring stations outside the City of Madrid (2015 - 2022)
 
-We employ a similar strategy involving loops to read pollution data from pollution monitoring stations outside the City of Madrid from 2015 to 2022. Hourly data for the 24 stations inside the Community of Madrid (excluding the Capital) since 2005 are available [here](https://datos.comunidad.madrid/catalogo/dataset/calidad_aire_datos_historico). We apply virtually identical cleaning and aggregation steps to create our dataframe aggregated to the monthly level.
+We employ a similar strategy involving loops to read pollution data from pollution monitoring stations outside the City of Madrid from 2015 to 2022. Hourly data for the 24 stations inside the Community of Madrid (excluding the Capital) since 2005 are available [here](https://datos.comunidad.madrid/catalogo/dataset/calidad_aire_datos_historico). We apply virtually identical cleaning and aggregation steps to create our dataframe with monthly observations.
 
 This time we find no stations with incomplete measurements when running the lines which create the object 'stations_to_exclude'.
 
@@ -170,7 +172,7 @@ for (file_name in file_names) {
     # Keep only NO2 measures and remove 'magnitude' column
     filter(magnitude == "8") %>% 
     select(-magnitude) %>%
-    # Adjust variable types, remove leading zeros, replace points with commas and adjust contents for comparability
+    # Adjust variable types, remove leading zeros and replace points with commas 
     mutate(month = as.numeric(month),
            day = as.numeric(day),
            hour = as.numeric(str_replace(hour, "h", "")),
@@ -193,6 +195,8 @@ stations_to_exclude <- all_com_data_clean %>%
   filter(n_obs_per_day < 18 | n_obs_per_year < 270) %>%
   pull(station_code)
 
+print(stations_to_exclude)
+
 # Aggregate the data to monthly level
 com_monthly <- all_com_data_clean %>% 
   group_by(town_code, station_code, year, month) %>% 
@@ -213,11 +217,11 @@ full_data <- bind_rows(city_monthly, com_monthly)
 
 ### 1.3. Data for pollution monitoring stations inside the City of Madrid 
 
-We now download data pertaining to the [pollution monitoring stations inside the City of Madrid](https://datos.madrid.es/portal/site/egob/menuitem.c05c1f754a33a9fbe4b2e4b284f1a5a0/?vgnextoid=9e42c176313eb410VgnVCM1000000b205a0aRCRD&vgnextchannel=374512b9ace9f310VgnVCM100000171f5a0aRCRD&vgnextfmt=default). The network is made up of 24 automatic remote stations that collect basic information for atmospheric surveillance. 
+We now download data pertaining to the [pollution monitoring stations inside the City of Madrid](https://datos.madrid.es/portal/site/egob/menuitem.c05c1f754a33a9fbe4b2e4b284f1a5a0/?vgnextoid=9e42c176313eb410VgnVCM1000000b205a0aRCRD&vgnextchannel=374512b9ace9f310VgnVCM100000171f5a0aRCRD&vgnextfmt=default). The network is made up of 24 automatic stations that collect basic information for atmospheric surveillance. 
 
-We apply data cleaning tools similar to the ones before. Note that we create a column for the town code since this is a variable in the dataset with stations outside the City of Madrid (see Section 1.4) and we want both datasets to have the same columns.
+We apply data cleaning tools similar to the ones before. Note that we create a column for the town code since this is a variable in the dataset with stations outside the City of Madrid (Section 1.4) and we want both datasets to have the same columns to combine them later.
 
-Then we extract the longitude and latitude of all stations in the network. We generate a variable called 'distance_km' representing the distance of each one to Plaza del Carmen (only station inside the LEZ and policy centroid, see Section 2.3). We then arrange all stations by increasing distance from the city centre. We will use this information to create our treatment rings later on.
+We then extract the longitude and latitude of all stations in the network. We generate a variable called 'distance_km' representing the distance of each station to the station in Plaza del Carmen (only one inside the LEZ and our policy centroid, see Section 2.3). We compute these distances using the [Haversine formula](https://www.rdocumentation.org/packages/pracma/versions/1.9.9/topics/haversine). We then arrange all stations by increasing distance from the city centre (Plaza del Carmen). We will use this information to create our treatment rings later on.
 
 ```{r}
 # Open dataset with station features
@@ -266,11 +270,11 @@ For each station, we have information on their code (so that station and polluti
 
 - *Urban traffic*, whose pollution measurements are mainly influenced by emissions from nearby streets or highways due to their strategic location;
 
-- *Suburban*, which generally have lower pollution levels (but higher ozone ones) because of their location on the outskirts of the city. We assign these stations the name "Suburbana (ciudad)" to create a distinction with suburban stations outside the City of Madrid.
+- *Suburban*, which generally have lower pollution levels (but higher ozone ones) because of their location on the outskirts of the City. We assign these stations the name "Suburbana (ciudad)" to create a distinction with suburban stations outside the City of Madrid.
 
 ### 1.4. Data for pollution monitoring stations outside the City of Madrid 
 
-Again, we download and read data of pollution monitoring stations from the [website of the Community of Madrid](http://gestiona.madrid.org/azul_internet/html/web/3.htm?ESTADO_MENU=3). We clean the data using regular expressions to fix the formatting of the longitude, latitude and address columns which had several issues (e.g. unnecessary quotation marks or commas). We also merge the columns containing information about area type and station type into a new column with the name of the latter to ensure comparability with data on stations inside the City of Madrid. We arrange the resulting dataframe so that stations closest to Plaza del Carmen are at the top.
+Along the lines of the last section, we download and read data of pollution monitoring stations outside the Capital from the [website of the Community of Madrid](http://gestiona.madrid.org/azul_internet/html/web/3.htm?ESTADO_MENU=3). We clean the data using regular expressions to fix the formatting of the longitude, latitude and address columns which had several issues (e.g. unnecessary quotation marks or commas). We also merge the columns containing information about area type and station type into a new column with the name of the latter to ensure comparability with data on stations inside the City of Madrid. We arrange the resulting dataframe so that stations closest to Plaza del Carmen are at the top.
 
 ```{r}
 # Open dataset with station features
@@ -361,7 +365,7 @@ After loading and formatting our pollution and pollution station data, we create
 
 ### 2.1. Comparison of average pollution levels across stations in the Community of Madrid (2022)
 
-By way of introduction, we might be interested in how average pollution levels (NO~2~) compare across the different stations in the City of Madrid at a given point in time. We select year 2022 as it is the most recent data available in our analysis (so far). We assign labels with the names of the municipalities in Madrid to the different town codes. We then create our plot by grouping our data by town and obtaining the mean and standard error for the pollution level. We plot a point for each municipality with error bars indicating the standard error.
+By way of introduction, we might be interested in how average pollution levels (NO~2~) compare across the different stations in the City of Madrid at a given point in time. We select year 2022 as it encompasses (so far) the most recent available data in our analysis. We assign labels with the names of the municipalities in Madrid to the different town codes. We then create our plot by grouping our data by town and obtaining the mean and standard error for the pollution level. We plot a point for each municipality with error bars indicating the standard error.
 
 ```{r, layout="l-body-outset"}
 # Assign labels to levels of 'town_code'
@@ -406,11 +410,11 @@ There are significant differences between the pollution levels in large municipa
 
 ### 2.2. Comparison of average yearly pollution levels and compliance with Directive 2008/50/EC between in-City and out-of-City stations
 
-From the previous chart, we hypothesize that there may be an important difference between pollution levels in the City of Madrid (due to larger traffic flows) and those outside (despite the heterogeneity among the latter as seen above). Hence, we will now compare both average pollution levels and the number of days with excessive air pollution by year and location.
+From the previous chart, we hypothesize that there may be an important difference between pollution levels in the City of Madrid (due to larger traffic flows) and those outside (despite the heterogeneity among the latter as seen in the previous plot). Hence, we will now compare both average pollution levels and the number of days with excessive air pollution levels by year and location.
 
 #### **Average pollution (NO~2~) by year and location**
 
-To check how have average pollution levels evolved between 2015 and 2022 inside vis-à-vis outside the City of Madrid, we aggregate both sets of data (in-City vs. out-of-City) by year and compute the mean. We then combine the data and pivot it to wide format.
+To check how average pollution levels have evolved between 2015 and 2022 inside vis-à-vis outside the City of Madrid, we aggregate both sets of data (in-City vs. out-of-City) by year and compute the mean. We then combine the data and pivot it to wide format.
 
 ```{r}
 # Aggregate hourly data from inside the City of Madrid to yearly level and create 'Location' column 
@@ -441,13 +445,13 @@ kable(summary_table_wide_1, format = "html", row.names = FALSE) %>%
 ```
 
 
-We see that year 2017 saw the highest average pollution levels both inside and outside the City of Madrid. In fact, in 2015 and 2017 the Capital is surpassing the limit of 40 µg/m<sup>3</sup> for yearly average NO~2~ concentrations set by the Ambient Air Quality Directive. Still, throughout the years under consideration, NO~2~ levels in the air are considerably higher in the Capital.
+We see that year 2017 saw the highest average pollution levels both inside and outside the City of Madrid. In fact, in 2015 and 2017 the Capital was surpassing the limit of 40 µg/m<sup>3</sup> for yearly average NO~2~ concentrations set by the Ambient Air Quality Directive. Still, throughout all years under consideration, NO~2~ levels in the air are considerably higher in the Capital than in the rest of the Community.
 
 #### **Number of times with average pollution levels above Directive limits by year and location**
 
 The limit of 40 µg/m<sup>3</sup> is set on a yearly basis, which we just saw was violated for 2 years in the Capital. However, we might also want to dive a bit deeper and check whether the *hourly* limit of 200 µg/m<sup>3</sup> (which shall not to be exceeded more than 18 times in a calendar year according to the Directive) was complied with.
 
-We thus calculate the number of times (i.e. hours) the pollution level exceeded 200 each day for each location. We then combine the data from both datasets and create a summary table that shows the number of times the pollution level exceeded 200 µg/m<sup>3</sup> for each year and location. That is, we take the sum of all days for which the pollution level exceeded 200 µg/m<sup>3</sup> at least once. We then pivot and display the data below.
+We thus calculate the number of times (i.e. hours) the pollution level exceeded 200 each day for each location. We then combine the data from both datasets and create a summary table that shows the number of times the pollution level exceeded 200 µg/m<sup>3</sup> for each year and location. That is, we take the sum of all days for which the pollution level exceeded 200 µg/m<sup>3</sup> at least once for each group. We then pivot and display the data below.
 
 ```{r}
 # Create daily summaries of pollution level for stations both inside and outside the city 
@@ -479,10 +483,10 @@ kable(summary_table_wide_2, format = "html", row.names = FALSE) %>%
 ```
 
 
-We see that only from 2020 the number of times per year where hourly pollution levels exceeded 200 µg/m<sup>3</sup> in Madrid was less than 18. Outside the city of Madrid only 2015 witnessed a violation of the rule for hourly NO~2~ concentrations as prescribed by the Directive.
+Only from 2020 the number of times per year where hourly pollution levels exceeded 200 µg/m<sup>3</sup> in Madrid was less than 18. Outside the city of Madrid only 2015 witnessed a violation of the rule for hourly NO~2~ concentrations as prescribed by the Directive.
 
 
-### 2.3. Visualizing the location of pollution monitoring stations
+### 2.3. Visualization of the location of pollution monitoring stations
 
 
 #### **Perimeter of the Madrid Central Low Emission Zone (LEZ) and pollution monitoring stations in the City of Madrid**
@@ -512,6 +516,9 @@ stations_in_LEZ <- st_join(city_stations_coord.spdf, LEZ_limits_t, join = st_wit
 stations_in_LEZ$LEZ <- 
   ifelse(is.na(stations_in_LEZ$AMBITO_GEO), 0, 1)
 
+# Filter for only station inside LEZ
+stations_in_LEZ %>% filter(LEZ == 1)
+
 # Display the stations on the map with the LEZ perimeter
 mapview(stations_in_LEZ, label = "CENTRO", col.regions = "orange") + mapview(LEZ_limits_t, alpha.regions = 0.2)
 
@@ -523,7 +530,7 @@ mapview(stations_in_LEZ, label = "CENTRO", col.regions = "orange") + mapview(mad
 ```
 
 
-The reader is encouraged to hover over both maps and chick on any given station to find information about its name, type of station or address, among others.
+The reader is encouraged to hover over both maps and chick on any given station to find information about its name, type and address, among others.
 
 From the dataframe 'stations_in_LEZ' and both plots we can gather that only the station in Plaza del Carmen is inside the LEZ. This implies we can treat it as our "policy centroid". Also, the LEZ is relatively small compared to the area of the entire municipality.
 
@@ -740,7 +747,7 @@ aemet_api_key("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJlbGVuYS55dXN0cmVzQGdtYWlsLmNvbSIs
 
 Before working with data on the meteorological variables themselves, we access data on the 13 weather stations scattered around the Community of Madrid. 
 
-After cleaning our data, we want to match each pollution monitoring station with its closest weather station. To that end, we extract a matrix of coordinates for all air pollution monitoring stations *and* weather stations in the Community from the 'data_all_stations' and the newly created 'weather_stations' dataset, respectively. We then calculate the distances between pollution and weather stations using the Haversine formula and match each air pollution station to the closest weather station. We add this information as a new column to the 'data_all_stations' dataframe.
+After cleaning our data, we want to match each pollution monitoring station with its closest weather station. To that end, we extract a matrix of coordinates for all air pollution monitoring stations *and* weather stations in the Community from the 'data_all_stations' and the newly created 'weather_stations' dataset, respectively. We then calculate the distances between pollution and weather stations using (again) the Haversine formula and match each air pollution station to the closest weather station. We add this information as a new column to the 'data_all_stations' dataframe we created earlier.
 
 ```{r}
 # Access data on weather stations and make transformations
@@ -811,7 +818,7 @@ weather_full_final$direction_max_wind_speed <- ifelse(weather_full_final$directi
 
 ### 4.3. Imputation of missing values in weather variables
 
-At first glance, we notice that we face the problem of missing values in our weather variables. We will use **multiple imputation** to tackle this issue, which relies on the distribution of the observed data to estimate multiple plausible values that reflect the uncertainty about the missing observations (Rubin 1976). While it generally performs better than zero- or mean-/median- imputation and is most likely superior to dropping observations altogether, multiple imputation relies on a few assumptions we must check first.
+At first glance, we notice that we face the problem of missing values in our weather variables. We will use **multiple imputation** to tackle this issue. This method uses the distribution of the observed data to estimate multiple plausible values that reflect the uncertainty about the missing observations (Rubin 1976). While it generally performs better than zero- or mean-/median- imputation and is most likely superior to dropping observations altogether, multiple imputation relies on a few assumptions we must check first.
 
 Let's start by checking the percentage of missing values in each of our potential controls:
 
@@ -859,7 +866,7 @@ We see that the stations in Aranjuez, Ciudad Universitaria or Somosierra have a 
 
 Nevertheless, there are two main reasons why we will proceed with the multiple imputation of our weather covariates. 
 
-First, since we include station fixed effects in our models (Section 5), we can think of missingness as an additional attribute that varies across stations besides, for instance, the amount of traffic. Hence, assuming missingness is captured by these unit fixed effects, we want to ensure that we do not observe more missing values at specific dates. To check this, we create a similar plot but this time we group by date rather than station:
+First, since we include station fixed effects in our models (Section 5), we can think of missingness as an additional attribute that varies across stations besides, for instance, the amount of traffic. Hence, assuming missingness is captured by these unit fixed effects, we want to ensure that we do not observe more missing values at specific dates (which would be problematic). To check this, we create a similar plot but this time we group by date rather than station:
 
 ```{r}
 # Compute number of NAs for 'min_pressure' for each date 
@@ -885,9 +892,11 @@ ggplot(na_counts, aes(x = date, y = na_count)) +
   scale_x_discrete(breaks = selected_labels)
 ```
 
-While March of 2018 seems to have an unusually high number of missing values, there does not seem to be any pattern indicating missingness is correlated with time. We hence have a more or less balanced panel.
+While March of 2018 seems to have an unusually high number of missing values, there does not seem to be any pattern indicating missingness is strongly correlated with time. We hence have a more or less balanced panel.
 
-Second, we see that the imputed distributions of 'min_pressure' are rather similar to the original one in the plots below. In order to visualize how the imputed values are distributed for this specific variable, we use the package [`mice()`](https://www.rdocumentation.org/packages/mice/versions/3.14.0/topics/mice) (standing for 'Multivariate Imputation by Chained Equations') with three different algorithms: Predictive Mean Matching ("pmm"), Lasso Regression ("lasso.norm") and Classification and Regression Trees ("cart"). We use ten imputations for each missing value (m=10).
+Second, we see that the imputed distributions of 'min_pressure' are rather similar to the original one in the plots below. In order to visualize how the imputed values are distributed for this specific variable, we use the package [`mice()`](https://www.rdocumentation.org/packages/mice/versions/3.14.0/topics/mice) (standing for 'Multivariate Imputation by Chained Equations') with three different algorithms: Predictive Mean Matching ("pmm"), Lasso Regression ("lasso.norm") and Classification and Regression Trees ("cart"). 
+
+We use ten imputations for each missing value (m=10) and set a random seed to ensure the replicability of our imputation results.
 
 ```{r, results = FALSE}
 set.seed(1234)
@@ -982,11 +991,11 @@ weather_full_final_a <- weather_full_final %>%
             avg_pressure_monthly = round(mean((min_pressure + max_pressure)/2), 2))
 ```
 
-In case there is still any doubt with the assumptions of the imputation procedure carried out in this section, Section 7.1. goes throughout an alternative strategy involving weights based on probabilities.
+In the event that there are still doubts regarding the assumptions of the imputation procedure carried out in this section, Section 7.1. goes throughout an alternative strategy involving weights based on probabilities of missingness.
 
 ### 4.4. Describing model covariates
 
-Now that we have our variables without missing values, we will create a series of visualizations to describe how they vary across station rings as well as through the time window under study.
+Now that we our variables are free of missing values, we will create a series of visualizations to describe how they vary across station rings as well as through the time window under study.
 
 We will work with the following variables (at the monthly level):
 
@@ -1004,7 +1013,6 @@ v. **(Average) pressure**
 #### **Weather variables across station rings**
 
 We start by exploring the relationship between our five weather variables and station rings. Recall that Ring 1 is the closest to, and Ring 6 is the farthest away from, Plaza del Carmen (city centre). 
-
 We merge weather data with our dataset containing information about air quality monitoring stations and the corresponding closest weather station for each by the latter variable. We do this because we are interested in visualizing weather variables as a function of the ring of pollution stations each corresponding weather station is closest to.
 
 Importantly, we replace missing values for the 'ring' column in the newly created dataframe by "Ring 6: Excluded". The reason is that all missing values corresponded to the weather station in Somosierra since it was not selected as the closest weather station for any of our pollution stations in the computation performed earlier. As such, weather observations taken in Somosierra had no information about the ring and we thus had to assign the last ring to them manually.
@@ -1052,11 +1060,11 @@ weather_all %>%
         legend.position = "none")
 ```
 
-We see that for total rain and average temperature there are no significant differences across the different stations grouped as rings as the medians are quite similar. In contrast, wind-related variables and average pressure seem to be subject to larger differences. Stations in Ring 3 appear to have higher average wind direction (and wind speed but with smaller differences compared to Rings 4 and 5). For pressure, the medians are not that different but the distributions (especially the minimum values) appear to be.
+We see that for total rain and average temperature there are no significant differences across the different stations grouped into rings as the medians are quite similar. In contrast, wind-related variables and average pressure seem to be subject to larger differences. Stations in Ring 3 appear to have higher average wind direction (and wind speed but with smaller differences compared to Rings 4 and 5). For pressure, the medians are not that different but the distributions (especially the minimum values) appear to be.
 
 #### **Weather variables across station rings and time (2019)**
 
-We saw some differences with data aggregated at the yearly level. However, we want to to assess whether there are any interesting patterns in the evolution of our weather variables for a given year (again, 2019) across station rings.
+We saw some differences with data aggregated at the yearly level. However, we want to assess whether there are any interesting patterns in the evolution of our weather variables for a given year - again, 2019 - across station rings.
 
 We perform similar data transformation operations as before, with the difference that now we are actually plotting the mean value of each weather variable for each station ring in each month of 2019. We use lines color-coded by station ring, with each weather variable plotted separately in its own facet. 
 
@@ -1099,18 +1107,18 @@ weather_all %>%
         plot.title = element_text(size = 12))
 ```
 
-For some variables (e.g.  temperature and, to a lesser extent, pressure and wind speed), the trends seem to be more or less parallel across station rings. In these cases, adding month and station fixed effects (see Section 5) should be enough since temperature and pressure seem to be varying consistently through time across rings. However, the story is different for the other variables since there appear to be time-varying changes across rings. Thus, the inclusion of these variables into our models seems essential to control for heterogeneity which could potentially hamper our estimates. 
+For some variables (e.g.  temperature and, to a lesser extent, pressure and wind speed), the trends seem to be more or less parallel across station rings. In these cases, adding month and station fixed effects (see Section 5) could potentially be enough since temperature and pressure seem to be varying consistently through time across rings. However, meteorological conditions still change over time for all rings and the other variables appear to be subject to even stronger time-varying changes across rings. Thus, the inclusion of these variables into our models is essential to control for heterogeneity which could hamper our estimates. 
 
 
 ## 5. MODELLING POLLUTION SPILLOVER EFFECTS
 
 With all the necessary data loaded and (almost) properly transformed, we are ready to kick off the modelling stage. We will employ a **Difference-in-Differences (DiD)** design (Snow 1885) to uncover whether there were any spatial pollution spillovers as a result of the introduction of restrictions in Madrid Central, and if so, how "big" they are and how far out they are significant.
 
-### 5.1. Parallel Trends assumption
+### 5.1. Parallel trends assumption
 
 We start by checking the main assumption behind DiD: **Parallel Trends**. We plot the evolution of yearly averages (for simplicity purposes) for each of our six rings in order to test whether they were following similar (i.e. parallel) *trends* prior to the policy implementation.
 
-In order to do that plot we must first carry our some data manipulation. First we merge the dataset containing pollution data for stations in the Community of Madrid ('full_data_complete') and the one with data on pollution stations and the matched weather stations ('data_all_stations'). While these two dataframes have many variables in common, the former contains pollution data and the latter contains information about rings and thus the need to merge them.
+In order to create that plot we must first carry our some data manipulation. First we merge the dataset containing pollution data for stations in the Community of Madrid ('full_data_complete') and the one with data on pollution stations and the matched weather stations ('data_all_stations'). While these two dataframes have many variables in common, the former contains pollution data and the latter contains information about rings and thus the need to merge them.
 
 We then filter out data from July 2021 onwards because of the fundamental changes to the policy taking place at that time (see main document). We select the necessary variables for plotting, after which we calculate the average yearly pollution level for each year and ring.
 
@@ -1136,9 +1144,9 @@ yearly_averages <- model_pollution_subset %>%
 ```
 
 
-We can now plot the evolution of average pollution levels. If the assumption is met, we should not have the *trends* in the yearly averages diverging before the introduction of the treatment. 
+We can now plot the evolution of average pollution levels. If the assumption is met, we should not have the *trends* in the yearly averages diverging significantly before the introduction of the treatment. 
 
-We create a line plot of the yearly averages for each ring. We set a dashed vertical line on November 30th, 2018 (day of introduction of Madrid Central) by using the `geom_vline()` function with x = 2018.91 (since November 30th is the 334th day of the year, which is around 0.91 as a fraction of the total year):
+We create a line plot of the yearly averages for each ring. We set a dashed vertical line on November 30th, 2018 (day of introduction of Madrid Central) by using the `geom_vline()` function with x = 2018.91 (since November 30th is the 334th day of the year, which is around 0.91 as a fraction of the total year).
 
 ```{r, layout="l-body-outset"}
 # Plot the yearly averages for each ring
@@ -1160,13 +1168,11 @@ ggplot(yearly_averages, aes(x = year, y = avg_yearly_pollution, color = ring)) +
 
 There are two main takeaways from this plot. 
 
-First, we seem to have parallel trends. Despite some differences in the slopes between the first four rings and the last two, pre-intervention trends look approximately parallel and thus we can assume that any differences in pollution levels after the implementation were solely due to the policy. Put differently, in the absence of intervention, we assume that nothing would have changed from what had already been observed (i.e. similar slopes but different intercepts reflecting station-specific fixed effects).
+First, we seem to have parallel trends. Despite some differences in the slopes between the first four rings and the last two, pre-intervention trends look approximately parallel and thus we can assume that any differences in pollution levels after the implementation were solely due to the policy. Put differently, in the absence of the intervention, we assume that nothing would have changed from what had already been observed (i.e. similar slopes but different intercepts reflecting station-specific fixed effects).
 
 Second, we can see that Ring 6 stations are actually quite different from those in the other five rings symbolized by the flatter slope (in red). 
 
-Note that in Section 2.4 we removed rural stations from our data (6 out of the 8 stations in the last ring) in order to reflect more accurately the differences between urban and suburban stations in our network. Now we remove the *remaining* 2 stations from Ring 6 (Aranjuez and Villarejo de Salvanés) which happen to be background suburban and traffic suburban stations, respectively. 
-
-We do this because, when running our models, we want control and treated stations to be as similar as possible and including Ring 6 stations in the former would threaten that goal. We then remove any levels of the 'ring' factor (the one referring to Ring 6 in this case) that are not present in the remaining data.
+Note that in Section 2.4 we removed rural stations from our data (6 out of the 8 stations in the last ring) in order to reflect more accurately the differences between urban and suburban stations in our network. Now we remove the *remaining* 2 stations from Ring 6 (Aranjuez and Villarejo de Salvanés) which happen to be background suburban and traffic suburban stations, respectively. We do this because, when running our models, we want control and treated stations to be as similar as possible and including Ring 6 stations in the former would threaten that goal. We then remove any levels of the 'ring' factor (the one referring to Ring 6 in this case) that are not present in the remaining data.
 
 ```{r}
 # Show stations (Ring 6) to remove and their type
@@ -1184,7 +1190,7 @@ model_pollution_df$ring <- droplevels(model_pollution_df$ring)
 
 #### **Merging of dataframes into a final one with complete information for the model**
 
-Now we perform our last merging of dataframes in order to get all the attributes needed for running the model into 'did_df'. The dataframe 'model_pollution_df' contains information about dates, pollution and stations (location, type, distance from the centre, ring and closest weather station) while 'weather_full_final_a' has data on dates, weather stations and weather variables. We can hence join them by the name of the weather station. This variable has different names in each dataframe and so we rename it in the first before merging it with the second:
+Now we perform our last merging of dataframes in order to get all the attributes needed for running the models into 'did_df'. The dataframe 'model_pollution_df' contains information about dates, pollution and stations (location, type, distance from the centre, ring and closest weather station) while 'weather_full_final_a' has data on dates, weather stations and weather variables. We can hence join them by the name of the weather station and the date. The former has different names in each dataframe and so we rename it in the first before merging it with the second:
 
 ```{r}
 # Rename weather station variable so that it is the same in both datasets
@@ -1272,7 +1278,7 @@ pollution_correlations <- correlations[1, 2:4]
 print(round(abs(pollution_correlations), 2))
 ```
 
-Average temperature has the highest correlation with pollution (-0.4), over 0.4 in absolute value. Therefore, we remove the other two variables. We also remove variables containing redundant information from our dataset.
+Average temperature has the highest correlation with pollution, over 0.4 in absolute value. Therefore, we remove the other two variables. We also remove variables containing redundant information from our dataset.
 
 ```{r}
 # Remove 'min_temperature_monthly' and 'max_temperature_monthly' from the dataframe
@@ -1311,11 +1317,11 @@ mtext("Correlation Plot of Weather Controls and Pollution Level", side = 3, line
 
 It is clear that correlations *among* our weather variables are not excessively high, the largest one being the (obviously negative) association between average temperature and total rain measured on a monthly basis. 
 
-We also see that, among all weather variables, average temperature and average wind speed seem to be the most correlated with pollution. Both have moderate negative linear associations with the outcome variable. Pressure, rain and wind direction are barely associated (linearly) with pollution since their correlation coefficients are close to 0. Still, even if some variables may not be highly correlated with the dependent variable in our models, we will still include them because they may have explanatory power *in conjunction with* other variables. Furthermore, these covariates may have non-linear relationships with pollution which would go uncaptured by the correlation coefficient (see Section 6.1.H). More importantly, we should be concerned that *some* of these variables (without concrete knowledge of which) may be responsible for some variability in the dependent variable that must be accounted for to avoid biased estimates in our model. 
+We also see that, among all weather variables, average temperature and average wind speed seem to be the most highly correlated with pollution. Both have moderate negative linear associations with the outcome variable. Pressure, rain and wind direction are barely associated (linearly) with pollution since their correlation coefficients are close to 0. Still, even if some variables may not be highly correlated with the dependent variable in our models, we will still include them because they may have explanatory power *in conjunction with* other variables. Furthermore, these covariates may have non-linear relationships with pollution which would go uncaptured by the correlation coefficient (see Section 6.1.H). More importantly, we should be concerned that *some* of these variables (without concrete knowledge of which) may be responsible for some variability in the dependent variable that must be accounted for to avoid biased estimates in our model. 
 
 ### 5.4. Summary of outcome, explanatory and control variables in the model
 
-We create a table summarizing the variables in our model, including their names in this code, description and basic summary statistics (mean and standard deviation).
+We create a table summarising the variables in our model, including their names in this code, description and basic summary statistics (mean and standard deviation).
 
 ```{r}
 # Define variable names 
@@ -1369,11 +1375,11 @@ kable(result_df, format = "html", row.names = FALSE) %>%
   column_spec(1, bold = TRUE) 
 ```
 
-### 5.5. Manual calculation of the Average Treatment Effect 
+### 5.5. Manual calculation of the average treatment effect (ATT)
 
 While the causal effect of interest is usually extracted by means of regression, we can first exemplify the logic behind DiD by performing the simple calculation below.
 
-We rely on the potential outcome framework. For the sake of simplicity, we assume that only immediate stations (Plaza del Carmen, Plaza de España, Escuelas Aguirre and Parque del Retiro) are treated ("treatment_ring1==1") and the rest are not ("treatment_ring1==0"). Recall we also have the time variable indicating whether a given observation was taken before or after the introduction of the policy ("POST==0" and "POST==1", respectively).
+We rely on the potential outcome framework. For the sake of simplicity, we assume that only stations inside and immediately outside the LEZ (Plaza del Carmen, Plaza de España, Escuelas Aguirre and Parque del Retiro) are treated ("treatment_ring1==1") and the rest are not ("treatment_ring1==0"). Recall we also have the time variable indicating whether a given observation was taken before or after the introduction of the policy ("POST==0" and "POST==1", respectively).
 
 By subtracting the difference in (mean) pollution levels between the treatment (our four stations) and control groups (the remaining stations) *before* the intervention from the (mean) difference in pollution levels between the treatment and control units *after* the intervention, we are able to approximate the **Average Treatment Effect (ATT)**. In our case, it is the difference in pollution levels between the treatment group and the control groups, after accounting for any pre-existing differences in pollution levels between both groups.
 
@@ -1422,11 +1428,11 @@ kable(table_ATT, format = "html") %>%
 
 We obtain an ATT of -6.19 (third row, third column - the result of taking the "double difference"), which reflects the average reduction in pollution as measured by NO~2~ concentrations for the stations in Plaza del Carmen, Plaza de España, Escuelas Aguirre and Parque del Retiro as a result of the policy.
 
-### 5.6. DiD Regressions
+### 5.6. Difference-in-Differences Regressions
 
-It is time to run our DiD regressions. In practice, DiD identification strategies are implemented through **fixed-effects models**. We run five different ones using the [`plm()` R package](https://www.rdocumentation.org/packages/plm/versions/2.6-3/topics/plm), each with an increasing number of predictors and thus degree of complexity compared to the previous one. A comparison of the results from the five models is offered at the end of this section.
+It is time to run our DiD regressions. In practice, DiD identification strategies are implemented through **fixed-effects models**. We run five different ones using the [`plm()`](https://www.rdocumentation.org/packages/plm/versions/2.6-3/topics/plm) R package, each with an increasing number of predictors and thus degree of complexity compared to the previous one. 
 
-First of all we transform the month column to a string so that we are later able to remove the 11 levels of that variable from the regression table summarizing our five models for the sake of simplicity. We transform the time, treatment and interaction terms into factors.
+First of all we transform the month column to a string so that we are later able to remove the 11 levels of that variable from the regression table summarising our five models for the sake of simplicity. We transform the time, treatment and interaction terms into factors.
 
 ```{r}
 # Convert month variables to strings
@@ -1468,7 +1474,7 @@ Since the p-value is clearly below the significance level of 0.05, we reject the
 
 Therefore, we compute a t-test with clustered standard errors on our simplest model using the [`coeftest()`](https://www.rdocumentation.org/packages/lmtest/versions/0.9-40/topics/coeftest) function while specifying the use of heteroskedasticity-consistent (HC) standard errors. After trying different values for 'type', we select HC1 which specifies that the standard errors should be calculated using the "sandwich estimator." This yields valid (consistent) standard errors and more accurate p-values in the presence of heteroskedasticity and/or autocorrelation. Recall that these two violate the assumptions of ordinary least squares (OLS) regression as the treatment is unable to predict the outcome evenly across stations. 
 
-It is true that several options (HC0 through HC3) are available for the type of standard errors. For reference, as we move from HC1 to HC2, the standard error increases, so the critical value decreases and the p-value rises. In other words, as we raise the "HC type", it becomes increasingly more difficult to find significance. Hence, we will stay at HC1 to be conservative with respect to HC0, but not as much in order to allow for significance. Still, the choice is not incredibly relevant as we obtain the same results for all "HC types" in terms of which variables are significant.
+It is true that several options (HC0 through HC3) are available for the type of standard errors. For reference, as we move from HC1 to HC2, the standard error increases, so the critical value decreases and the p-value rises. In other words, as we raise the "HC type", it becomes increasingly more difficult to find significance. Hence, we will stay at HC1 to be conservative with respect to HC0, but not as much in order to allow for significant effects. Still, the choice is not incredibly relevant as we obtain the same results for all "HC types" in terms of which variables are significant.
 
 ```{r}
 # Compute t-test with clustered standard errors (HC1)
@@ -1536,9 +1542,9 @@ clustered_test_m2 <- coeftest(m2, vcov = vcovHC(m2, type = "HC1", cluster = "gro
 print(clustered_test_m2)
 ```
 
-It seems that all controls are statistically significant at the 0.05 significance level except average pressure and average temperature. Our adjusted R-squared (which penalizes the inclusion of irrelevant variables into the model) has risen to around 74.7%. This means that meteorological information is important at explaining the variability in pollution levels.
+It seems that all controls are statistically significant at the 0.05 significance level except average pressure and average temperature. Our adjusted R-squared (which penalizes the inclusion of irrelevant variables into the model) has risen to around 74.7%. This means that meteorological information is actually relevant at explaining the variability in pollution levels.
 
-Our treatment effect for the closest four stations to the city centre is now around **-4.8** with a **p-value of 0.002**. That is, the policy has led to a significant decrease of 4.8 µg/m<sup>3</sup> in NO~2~ concentrations inside and within the immediate neighbourhood of Madrid Central *after controlling for the effects of meteorological conditions*. This is lower than the effect found in Model 1 in absolute value. This reduction means that, by incorporating weather controls, we were able to "strip away" some of the effect on pollution that was actually not caused by the restrictions in Madrid Central. 
+Our treatment effect for the closest four stations to the city centre is now around **-4.8** with a **p-value of 0.002**. That is, the policy has led to a significant decrease of 4.8 µg/m<sup>3</sup> in NO~2~ concentrations inside and within the immediate neighbourhood of Madrid Central *after controlling for the effects of meteorological conditions*. This is lower than the effect found in Model 1 in absolute value. This reduction means that, by incorporating weather controls, we were able to "strip away" some of the effect on pollution that was actually not caused by the restrictions in Madrid Central but by fluctuating meteorological conditions. 
 
 #### **Model 3: first and second treatment rings with weather controls**
 
@@ -1560,7 +1566,7 @@ clustered_test_m3 <- coeftest(m3, vcov = vcovHC(m3, type = "HC1", cluster = "gro
 print(clustered_test_m3)
 ```
 
-The adjusted R-squared is virtually the same. Our treatment effect for stations in Ring 1 is now around **-5.2** (**p-value = 0.001**) and the treatment effect for stations in Ring 2 is about **-1.2** (**p-value = 0.1**). There is an evident decrease in the absolute magnitude of the coefficient for Ring 2 compared to Ring 1, with the effect for the stations in the former ring being insignificant. Hence, the reduction of NO~2~ in the air was much weaker in the stations farther away from Plaza del Carmen than in those stations in its immediate vicinity (or the centroid station itself). Moreover, the impact of the policy on pollution levels in Ring 1 stations is amplified once we hold the second treatment ring constant. Please see Section 6.1.D for an alternative specification without this *ceteris paribus* implication.
+The adjusted R-squared is virtually the same. Our treatment effect for stations in Ring 1 is now around **-5.2** (**p-value = 0.001**) and the treatment effect for stations in Ring 2 is about **-1.2** (**p-value = 0.1**). There is an evident decrease in the absolute magnitude of the coefficient for Ring 2 compared to Ring 1, with the effect for the stations in the former ring being insignificant. Hence, the reduction of NO~2~ in the air was much weaker in the stations farther away from Plaza del Carmen than in those stations in its immediate vicinity (or the centroid station itself). Moreover, the impact of the policy on pollution levels in Ring 1 stations is amplified once we hold the second treatment ring constant. See Section 6.1.D for an alternative specification without this *ceteris paribus* implication.
 
 #### **Model 4: first three treatment rings with weather controls**
 
@@ -1609,7 +1615,7 @@ print(clustered_test_m5)
 
 This last model is equally explanatory as the previous three and the treatment effects for Rings 1, 2, 3 and 4 are around **-5.6** (**p-value = 0.003**), **-1.6** (**p-value = 0.2**), **-0.8** (**p-value = 0.6**) and **0.4** (**p-value = 0.8**). Again, from Ring 2 onwards the treatment effects lose statistical significance with a decreasing level of significance as our stations are located farther away from the centre. The coefficient and p-value for the treatment group consisting of Ring 4 stations are as expected: close to 0 (even positive!) and quite high, respectively.
 
-We now delve a bit deeper into the interpretation of coefficients other than the interaction term in Model 5. Note that our model outputs do now show an intercept. This is because the 'within model' is fitting a separate intercept for each station. We extract these below:
+We now delve a bit deeper into the interpretation of coefficients other than the interaction term in Model 5. Note that our model outputs do not show an intercept. This is because the 'within model' is fitting a separate intercept for each station. We extract these below:
 
 ```{r}
 # Extract fixed effects of the "within model" m5
@@ -1620,7 +1626,7 @@ Likewise, the coefficient for 'POST' (about -5.2 for Model 5) represents how muc
 
 **Visualization of treatment effects**
 
-We can plot the coefficient estimates for the interaction term (i.e. treatment effect) for each of the four rings and their respective confidence intervals. First, we extract the coefficient estimates and standard errors, after which we plot the contents of the newly created dataframe with this information.
+We can plot the coefficient estimates for the interaction term (i.e. treatment effect) for each of the four rings and their respective confidence intervals. We extract the coefficient estimates and standard errors and build with them a dataframe, whose contents we plot below:
 
 ```{r}
 # Extract coefficient estimates and standard errors
@@ -1631,8 +1637,7 @@ se <- sqrt(diag(vcovHC(m5, type = "HC1", cluster = "group")))
 df_plot <- data.frame(
   treatment_ring = c("Ring 1 (0 - 2.5km)", "Ring 2 (2.5 - 8km)", "Ring 3 (8 - 15km)", "Ring 4 (15 - 20km)"),
   coefficient = coefficients[grep("POST_treat_", names(coefficients))],
-  SE = se[grep("POST_treat_", names(se))]
-  )
+  SE = se[grep("POST_treat_", names(se))])
 
 # Plot the coefficient estimates with confidence intervals
 ggplot(df_plot, aes(x = treatment_ring, y = coefficient)) +
@@ -1648,11 +1653,11 @@ ggplot(df_plot, aes(x = treatment_ring, y = coefficient)) +
   theme_light()
 ```
 
-Unsurprisingly, only the treatment effect for Ring 1 is significantly different from 0 (in this case, negative). The coefficient estimates get closer and closer to 0 as stations farther away from Plaza del Carmen are considered, with that of the last ring being marginally positive.
+Unsurprisingly, only the treatment effect for Ring 1 is significantly different from 0 (in this case, negative). The coefficient estimates get closer and closer to 0 as stations farther away from Plaza del Carmen are considered as "treated", with that of the last ring being marginally positive.
 
 ### 5.7. Exporting model results
 
-Lastly, we export the results of our five models. To do that, we first create a vector of month dummies in order to exclude them from the regression table for ease of visualization and because they do not provide relevant information about the significance of spillovers. We also set the names of the variables for better readability. Next, since we do not want the original model object (e.g.'m5') but rather the model with the correct (clustered) standard errors (e.g. 'clustered_test_m5'), we create our own function that calculates these for all five models (and also for those used to assess our most complete model's robustness in the remainder of this document). This is done because inserting our previously created model objects with clustered standard errors into the `stargazer()` function returned an error once more than 3 models were included.
+Lastly, we export the results of our five models. To do that, we first create a vector of month dummies in order to exclude them from the regression table for ease of visualization and because they do not provide relevant information about the significance of spillovers. We also set the names of the variables for better readability. Next, since we do not want the original model object (e.g. 'm5') but rather the model with the correct (clustered) standard errors (e.g. 'clustered_test_m5'), we create our own function that calculates these for all five models (and also for those used to assess our most complete model's robustness in the remainder of this document). This is done because inserting our previously created model objects with clustered standard errors directly into the `stargazer()` function returned an error once more than 3 models were included.
 
 ```{r}
 # Create vector of month dummies to be excluded from the regression table
@@ -1694,7 +1699,7 @@ stargazer(models,
 
 ## 6. ROBUSTNESS CHECKS
 
-The last step in our analysis is performing a series of robustness checks. We use these to test the validity and reliability of our results to different assumptions or specifications of the model.
+The last step in our analysis consists of performing a series of robustness checks. We use these to test the validity and reliability of our results to different assumptions or specifications of the model.
 
 We will start by introducing several changes to the model with the highest number of regressors (Model 5), consisting of exploring a different level of data aggregation and period fixed effects, using different specifications of the treatment groups in the model, employing a different model set-up and adding as well as modifying our controls.
 
@@ -1702,7 +1707,7 @@ We then run two placebo tests. We use these to test the validity of our causal i
 
 ### 6.1. Modifications to the most complete model
 
-#### **A. Weekly Aggregation of Model Data**  
+#### **A. Weekly aggregation of model data**  
 
 The first robustness check consists of testing whether aggregating data at the weekly (rather than monthly) level has any impact on the significance of the policy effect.
 
@@ -1827,7 +1832,7 @@ Finally we run Model 5 on weekly data. We include all four treatment rings and a
 
 We still include month fixed effects since these are probably enough to capture time-dependent variability. Adding week fixed effects would amount to having too many variables in the model without a much higher degree of control or explainability.
 
-We compute clustered standard errors.
+We compute clustered standard errors and display results directly in the regression table.
 
 ```{r}
 # Set up the fixed effects model
@@ -1840,6 +1845,7 @@ m5_w <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 
 
 # T-test with clustered standard errors
 clustered_test_m5_w <- coeftest(m5_w, vcov = vcovHC(m5_w, type = "HC1", cluster = "group"))
+print(clustered_test_m5_w)
 
 # Calculate clustered standard errors to export results using `stargazer()`
 se_m5_w <- se_clustered(m5_w)
@@ -1870,18 +1876,24 @@ While we still set the 'model' argument equal to "within" to specify the use of 
 ```{r}
 # Set up the fixed effects model
 m5_two <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 + POST_treat_4 +
-            avg_temperature_monthly + total_rain_monthly + avg_wind_speed_monthly + wind_direction_monthly +
-            avg_pressure_monthly,
+            avg_temperature_monthly + total_rain_monthly + avg_wind_speed_monthly +
+            wind_direction_monthly + avg_pressure_monthly,
             model = "within",
             effect = "twoways",
             index = c("station_id", "month"),
             data = did_df)
 
-summary(m5_two)
-
 # T-test with clustered standard errors
 clustered_test_m5_two <- coeftest(m5_two, vcov = vcovHC(m5_two, type = "HC1", cluster = "group"))
+print(clustered_test_m5_two)
+```
 
+
+The estimates (and significance levels) for each of the four treatment rings are the same as before, but we are now unable to check on the *ceteris paribus* effect of each month fixed effect as these are no longer included explicitly in the model. 
+
+We export our results:
+
+```{r}
 # Calculate clustered standard errors to export results using `stargazer()`
 se_m5_two <- se_clustered(m5_two)
 
@@ -1897,15 +1909,13 @@ stargazer(m5_two,
           covariate.labels = variable_labels)
 ```
 
-The estimates (and significance levels) for each of the four treatment rings are the same as before, but we are now unable to check on the *ceteris paribus* effect of each month fixed effect as these are no longer included explicitly in the model. 
-
-However, the main change is a considerably lower adjusted R-squared; it has dropped to around 0.40. Hence, this model seems to yield the same results albeit with a lower degree of explainability.
+Still, there is an important change compared to the baseline model: we now obtain a considerably lower adjusted R-squared (it has dropped to around 0.40). Hence, this model seems to yield the same results as the initial one albeit with a lower degree of explainability.
 
 #### **C. Alternative specification of treatment group I: non-mutually exclusive rings**
 
-Next, we want to ensure that our results are not dependent on the specification of our models by treatment ring. Recall that in Model 5 of Section 5 we created four *mutually exclusive* treatment variables (and thus interaction terms) so that each would contain a *different* set of stations so as to test the geographical scope of policy spillovers. 
+Next, we want to ensure that our results are not dependent on the specification of our models by treatment ring. Recall that in Model 5 of Section 5 we created four *mutually exclusive* treatment variables (and thus interaction terms) so that each would contain a *different* set of stations in order to test the geographical scope of policy spillovers. 
 
-Now we take a slightly different approach and create treatment variables whereby each treatment ring contains the current ring *as well as all other previous rings*. For instance, the third treatment ring includes observations in Ring 3, Ring 2 and Ring 1.
+Now we take a slightly different approach and create treatment variables where each treatment ring contains the current ring *as well as all other previous rings*. For instance, the third treatment ring includes observations in Ring 3, Ring 2 and Ring 1.
 
 In order to do that, we repeat the transformations we used before but now we create our treatment rings following this alternative specification.
 
@@ -1915,7 +1925,7 @@ did_df_s <- model_pollution_df %>%
   left_join(weather_full_final_a, 
             by = c("year", "month", "weather_station_name"))
 
-#Create post-treatment dummy (POST = 1 if year is greater than 2018 or if equal to 2018 and the month is December)
+# Create post-treatment dummy (POST = 1 if year is greater than 2018 or if equal to 2018 and the month is December)
 did_df_s <- did_df_s %>%
   mutate(POST = ifelse(year > 2018 | (year == 2018 & month == 12), 1, 0))
 
@@ -1958,9 +1968,6 @@ m5_s <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 
             model = "within", index = c("station_id"),
             data = did_df_s)
 
-# T-test with clustered standard errors
-clustered_test_m5_s <- coeftest(m5_s, vcov = vcovHC(m5_s, type = "HC1", cluster = "group"))
-
 # Calculate clustered standard errors to export results using `stargazer()`
 se_m5_s <- se_clustered(m5_s)
 
@@ -1978,7 +1985,7 @@ stargazer(m5_s, se = list(se_m5_s),
 
 Our estimates do not seem to be very different from the ones in the original model, although (for instance) the treatment effect for Ring 1 stations is lower in absolute magnitude in this new specification.
 
-We can repeat our plot with the confidence intervals for each (new) treatment ring to assess whether the new specification leads to largely different results:
+We can repeat our plot with the confidence intervals for each (new) treatment ring to more easily assess whether the new specification leads to largely differing results:
 
 ```{r}
 # Extract coefficient estimates and standard errors
@@ -1989,8 +1996,7 @@ se <- sqrt(diag(vcovHC(m5_s)))
 df_plot <- data.frame(
   treatment_ring = c("Ring 1 (0 - 2.5km)", "Ring 2 (0 - 8km)", "Ring 3 (0 - 15km)", "Ring 4 (0 - 20km)"),
   coefficient = coefficients[grep("POST_treat_", names(coefficients))],
-  SE = se[grep("POST_treat_", names(se))]
-  )
+  SE = se[grep("POST_treat_", names(se))])
 
 # Plot the coefficient estimates with confidence intervals
 ggplot(df_plot, aes(x = treatment_ring, y = coefficient)) +
@@ -2006,11 +2012,11 @@ ggplot(df_plot, aes(x = treatment_ring, y = coefficient)) +
   theme_light()
 ```
 
-Indeed, the estimates are very similar. The main difference is the lower variability in Ring 2 and the fact that the estimated coefficient for Ring 3 is actually more negative (i.e. higher in absolute value) than that for Ring 2. Despite the lack of statistical significance for both, this result raises some questions as to why including stations farther away from the city centre into the treatment group strengthens the treatment effect. This might also be proof that our original specification may lead to more accurate results than the alternative. 
+Indeed, the estimates are very similar. The main difference is the lower variability in Ring 2 and the fact that the estimated coefficient for Ring 3 is actually more negative (i.e. higher in absolute value) than that for Ring 2. Despite the lack of statistical significance for both, this result raises some questions as to why including stations farther away from the city centre into the treatment group strengthens the treatment effect. This could also be proof that our original specification may lead to more accurate results than the alternative. 
 
 #### **D. Alternative specification of treatment group II: subgroup analysis through individual models**
 
-Models 3 to 5 effectively capture the treatment effect for each of the four rings *while controlling* for the other rings included. That is, the effectiveness of the policy for the stations in each ring depends on the inclusion of the other ring(s).
+Models 3 to 5 effectively capture the treatment effect for each of the four rings *while controlling* for the other rings included in the model. That is, the effectiveness of the policy for the stations in each ring depends on the inclusion of the other ring(s).
 
 Yet, just like we did for Model 2 and Ring 1 stations, we can try to run different models where we only include one ring as the treatment group (aside from time and unit fixed effects and the weather controls).
 
@@ -2058,11 +2064,78 @@ m2_r4 <- plm(pollution_level ~ POST + POST_treat_4 +
           data = did_df)
 
 clustered_test_m2_r4 <- coeftest(m2_r4, vcov = vcovHC(m2_r4, type = "HC1", cluster = "group"))
+print(clustered_test_m2_r4)
+```
 
+We see that the net effects of Madrid Central on the average air pollution levels in Ring 1, Ring 2, Ring 3 and Ring 4 stations are -4.83, -0.43, 0.74 and 1.85, respectively. 
+
+It is useful to compare these coefficients with the estimates we obtained for each ring in Model 5 (i.e. model including all treated stations): -5.6, -1.6, -0.8 and 0.4, respectively. Just like we saw in the complete model, the pollution reduction due to the LEZ is significant for Ring 1 but not for Ring 2 and the rest. However, we now see that for these first two rings, the coefficients are larger (in absolute value) in the model that controls for all stations than those in the models estimating the effect for each ring individually. This could be due to the existence of (negative) spillover effects from the LEZ beyond its immediate proximity. In fact, without clustered standard errors, the policy effect for Ring 2 stations turned out to be significant (and negative) in Models 3, 4 and 5 of our primary regression exercise. However, it is more likely that the fluctuations in coefficient magnitudes are due to the smaller sample size when running each model separately.
+
+For Ring 3 stations, however, the coefficient in the "net effect model" is positive while it was negative in the model with all stations (still insignificant). This suggests that there might be negative spillover effects from the LEZ counteracting positive ones observed when analyzing this group of stations independently. Confounding factors, spatial interactions or (again) simply the sample size could be behind this "incongruence" of the sign of treatment effects between the two models. 
+
+Finally, the coefficient on Ring 4 stations when considering them in isolation is higher than the one for those stations in the complete model, with both of them being positive and insignificant. This is the opposite effect as observed for Ring 1 and Ring 2 stations. While this could indicate that the LEZ's impact on pollution levels is relatively localized in Ring 4, the fact that the change in pollution in these stations shows such low statistical significance renders sample size the most likely driver of this variation.
+
+To close off this section, in order to ensure that the significant effect of the policy on the pollution levels of Ring 1 stations found in both sets of models ("complete" and "individual") does not exclusively hinge on the impact on the only station inside the LEZ (Plaza del Carmen), we re-run the model on the first treatment ring *excluding Plaza del Carmen*:
+
+```{r}
+# Merge pollution and weather data
+did_df_i <- model_pollution_df %>% 
+  left_join(weather_full_final_a, 
+            by = c("year", "month", "weather_station_name"))
+
+# Create post-treatment dummy 
+did_df_i <- did_df_i %>%
+  mutate(POST = ifelse(year > 2018 | (year == 2018 & month == 12), 1, 0))
+
+# Create treatment dummies for each ring, excluding Plaza del Carmen from the first ("station_id = 79-35")
+did_df_i <- did_df_i %>%
+   mutate(treatment_ring1 = ifelse(ring == "Ring 1: Treated" & !(town_code == 79 & station_code == 35),
+                                   1, 0),
+         treatment_ring2 = ifelse(ring == "Ring 2: Treated", 1, 0),
+         treatment_ring3 = ifelse(ring == "Ring 3: Treated", 1, 0),
+         treatment_ring4 = ifelse(ring == "Ring 4: Treated", 1, 0))
+
+# Create interaction terms 
+did_df_i <- did_df_i %>%
+  mutate(POST_treat_1 = POST*as.numeric(treatment_ring1),
+         POST_treat_2 = POST*as.numeric(treatment_ring2),
+         POST_treat_3 = POST*as.numeric(treatment_ring3),
+         POST_treat_4 = POST*as.numeric(treatment_ring4))
+
+# Transform new variables into factors
+did_df_i <- did_df_i %>%
+  mutate_if(grepl("treatment_ring|POST_treat|POST", names(.)), ~as.factor(.))
+
+# Create 'station_id' by concatenating 'town_code' and 'station_code', separated by a hyphen
+did_df_i$station_id <- as.factor(paste(did_df_i$town_code, did_df_i$station_code, sep="-"))
+
+# Remove variables
+did_df_i <- did_df_i %>% select(-c(min_temperature_monthly, max_temperature_monthly, town_code, station_code))
+
+# Convert month variables to strings
+did_df_i$month <- as.character(did_df_i$month)
+
+# Set up model for only Ring 1 stations, excluding Plaza del Carmen
+m2_r1_pc <- plm(pollution_level ~ POST + POST_treat_1 +
+          avg_temperature_monthly + total_rain_monthly + avg_wind_speed_monthly + 
+          wind_direction_monthly + avg_pressure_monthly +
+          month,
+          model = "within", index = "station_id",
+          data = did_df_i)
+
+clustered_test_m2_r1_pc <- coeftest(m2_r1_pc, vcov = vcovHC(m2_r1_pc, type = "HC1", cluster = "group"))
+print(clustered_test_m2_r1_pc)
+```
+
+The treatment effect is still significant for Ring 1 stations excluding Plaza del Carmen (Plaza de España, Escuelas Aguirre and Parque del Retiro), thereby confirming the robustness of the spatially-bound spillover effect found above. The estimated treatment effect is now smaller in absolute value because the one found in the individual model above for Ring 1 stations encompassed the effect on Plaza del Carmen and thus captured some of the variability (i.e. decrease) in pollution in the policy centroid.
+
+We summarise all five models below, with the second column indicating the results of the last model (Ring 1 stations except Plaza del Carmen):
+
+```{r}
 # Create the list of four models to include in the regression table
-models_r <- list(m2_r1, m2_r2, m2_r3, m2_r4)
+models_r <- list(m2_r1, m2_r1_pc, m2_r2, m2_r3, m2_r4)
 
-# Generate regression table for 4 different models 
+# Generate regression table for 5 different models 
 stargazer(models_r,
           se = lapply(models_r, se_clustered),
           title = "Regression Results",
@@ -2070,20 +2143,28 @@ stargazer(models_r,
           type = "text",
           dep.var.caption = "Dependent Variable: Average Monthly NO2 Concentration",
           dep.var.labels.include = FALSE,
-          column.labels = c("Ring 1", "Ring 2", "Ring 3", "Ring 4"),
+          column.labels = c("Ring 1", "Ring 1 w/o P.C.", "Ring 2", "Ring 3", "Ring 4"),
           omit = exclude_vars,
           covariate.labels = variable_labels)
 ```
 
-We see that the net effects of Madrid Central on the average air pollution levels in Ring 1, Ring 2, Ring 3 and Ring 4 stations are -4.83, -0.43, 0.74 and 1.85, respectively. 
+We can also re-run Model 5 ("complete") on the four treatment rings, with the first ring excluding Plaza del Carmen to assess to what extent the significance of our results in Model 5 depends upon the presence of the policy centroid.
 
-It is useful to compare these coefficients with the estimates we obtained for each ring in Model 5 (i.e. model including all treated stations): -5.6, -1.6, -0.8 and 0.4, respectively. Just like we saw in the complete model, the pollution reduction due to the LEZ is significant for Ring 1 but not for Ring 2 and the rest. However, we now see that for these first two rings, the coefficient for each given treatment ring is larger (in absolute value) in the model that controls for all stations than the ones in the models estimating the effect for each ring individually. This suggests that there might actually be some (negative) spillover effects from the LEZ beyond its immediate proximity after all. In fact, without clustered standard errors, the policy effect for Ring 2 stations turns out to be significant (and negative) in Models 3, 4 and 5 of our primary regression exercise. Hence, we cannot explicitly rule out the possibility of any positive implications of the LEZ in the 12 stations within 2.5 and 8 km from Plaza del Carmen.
+```{r}
+# Set up model for all rings, with Ring 1 excluding Plaza del Carmen
+m5_pc <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 + POST_treat_4 +
+            avg_temperature_monthly + total_rain_monthly + avg_wind_speed_monthly + 
+            wind_direction_monthly + avg_pressure_monthly + 
+            month,
+            model = "within", index = c("station_id"),
+            data = did_df_i)
 
-For Ring 3 stations, however, the coefficient in the "net effect model" is positive while it was negative in the model with all stations (still insignificant). This suggests that there might be negative spillover effects from the LEZ counteracting positive ones observed when analyzing this group of stations independently. Confounding factors or spatial interactions could be behind this "incongruence" of the sign of treatment effects between the two models. 
+# T-test with clustered standard errors
+clustered_test_m5_pc <- coeftest(m5_pc, vcov = vcovHC(m5_pc, type = "HC1", cluster = "group"))
+print(clustered_test_m5_pc)
+```
 
-Finally, the coefficient on Ring 4 stations when considering them in isolation is higher than the one for those stations in the complete model, with both of them being positive and insignificant. This is the opposite effect as observed for Ring 1 and Ring 2 stations. It thus appears that the LEZ's impact on pollution levels might be relatively localized in Ring 4. 
-
-From these comparisons we can gather that negative spillovers may be into play near the LEZ albeit rather unimportantly. Still, it is worth noting that the spatial distribution of stations, the nature of pollution sources or the complex interplay of various spatial factors can lead to heterogeneous spillover effects across different rings. Our distance-based ring categorization provides a rough approximation of spatial proximity, but it may not capture all relevant spatial dynamics.
+Unsurprisingly, the coefficients do not vary much but the treatment effect in Ring 1 (three stations closest to Plaza del Carmen) is now only significant at the 0.1 significance level. Moreover, the positive spillovers seem to be higher in fourth-ring stations when Plaza del Carmen is excluded. This means that, although the policy clearly has beneficial effects in terms of pollution reduction in the vicinity of the LEZ, the decrease is much stronger inside than immediately outside of it.
 
 #### **E. Additional controls I: model with station type control**  
 
@@ -2106,9 +2187,6 @@ m5_st <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3
             model = "within", index = c("station_id"),
             data = did_df)
 
-# T-test with clustered standard errors
-clustered_test_m5_st <- coeftest(m5_st, vcov = vcovHC(m5_st, type = "HC1", cluster = "group"))
-
 # Calculate clustered standard errors to export results using `stargazer()`
 se_m5_st <- se_clustered(m5_st)
 
@@ -2125,7 +2203,7 @@ stargazer(m5_st,
           covariate.labels = variable_labels)
 ```
 
-Fortunately for the sake of our chosen model, the estimated coefficients, standard errors and significance levels for all our variables are identical to the model without the station type control (Section 5). Note that, by indexing by station, we are already accounting for differences related to the type of station (location primarily). This renders the station type control redundant and thus does not even appear in the model.
+Fortunately for the sake of our chosen model, the estimated coefficients, standard errors and significance levels for all our variables are identical to those in the model without the station type control (Section 5). Note that, by indexing by station, we are already accounting for differences related to the type of station (station location, primarily). This renders the station type control redundant and thus does not even appear in the model.
 
 #### **F. Additional controls II: model with public works control**
 
@@ -2139,7 +2217,7 @@ did_df_gv <- model_pollution_df %>%
   left_join(weather_full_final_a, 
             by = c("year", "month", "weather_station_name"))
 
-#Create post-treatment dummy (POST = 1 if year is greater than 2018 or if equal to 2018 and the month is December)
+# Create post-treatment dummy (POST = 1 if year is greater than 2018 or if equal to 2018 and the month is December)
 did_df_gv <- did_df_gv %>%
   mutate(POST = ifelse(year > 2018 | (year == 2018 & month == 12), 1, 0))
 
@@ -2191,9 +2269,6 @@ m5_gv <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3
             model = "within", index = c("station_id"),
             data = did_df_gv)
 
-# T-test with clustered standard errors
-clustered_test_m5_gv <- coeftest(m5_gv, vcov = vcovHC(m5_gv, type = "HC1", cluster = "group"))
-
 # Specify variable names
 variable_labels_gv <- c(
   "POST1" = "Post-Treatment",
@@ -2224,17 +2299,17 @@ stargazer(m5_gv,
           covariate.labels = variable_labels_gv)
 ```
 
-The estimates change slightly compared to the original model but not significantly. However, we see the variable 'GRAN_VIA' (or 'Gran Via' in the regression table) is actually significant. The presence of construction works in Gran Via during the 8 months prior to the introduction of the LEZ had an average effect on the pollution level of around -3.6 µg/m<sup>3</sup> (compared to its absence), holding all other variables in the model constant. This means that there is an *overall decrease* in average pollution in Madrid associated with this particular instance of public works.
+The estimates change slightly compared to the original model but not significantly. However, we see the variable 'GRAN_VIA' (or 'Gran Via Remodelling' in the regression table) is actually significant. The presence of construction works in Gran Via during the 8 months prior to the introduction of the LEZ had an average effect on the pollution level of around -3.6 µg/m<sup>3</sup> (compared to its absence), holding all other variables in the model constant. This means that there is a significant *overall decrease* in average pollution in Madrid associated with this particular instance of public works.
 
 Yet, this does not say anything about the pollution level in the first ring (which includes Gran Via street), since we cannot interact this dummy with 'POST_treat_1' as there is no time overlap between the implementation of the LEZ and the presence of construction work. 
 
-Hence, we refrain from including this variable since the estimates are basically the same and the combination of unit fixed effects (for Plaza del Carmen in this case) with month fixed effects should take care of this variability anyway.
+Hence, we refrain from including this variable in our main models since the estimates are basically the same and the combination of unit fixed effects (for Plaza del Carmen in this case) with month fixed effects should take care of (a lot of) this variability anyway.
 
 #### **G. Model with year fixed effects** 
 
-The next check entails including year, rather than month, fixed effects into our model. In theory month fixed effects should perform the same function as year fixed effects by capturing time-related variability in pollution levels affecting all stations equally, albeit in a more nuanced way.
+The next check entails including year, rather than month, fixed effects in our model. In theory, month fixed effects should perform the same function as year fixed effects by capturing time-related variability in pollution levels affecting all stations equally, yet in a more nuanced way.
 
-Hence we merely run Model 5 again but control for the year rather than the month:
+Hence we simply run Model 5 again but control for the year rather than the month:
 
 ```{r}
 # Convert year variables to strings
@@ -2247,9 +2322,6 @@ m5_y <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 
             year,
             model = "within", index = c("station_id"),
             data = did_df)
-
-# T-test with clustered standard errors
-clustered_test_m5_y <- coeftest(m5_y, vcov = vcovHC(m5_y, type = "HC1", cluster = "group"))
 
 # Specify variable names
 variable_labels_y <- c(
@@ -2287,7 +2359,7 @@ stargazer(m5_y,
 
 We see that the coefficient estimates for the interaction terms are quite similar to the model with month fixed effects. Interestingly, the 'POST' variable loses significance and its coefficient changes from around -5 to -0.5. This means that this model does not find a significant change in the average pollution level of stations in the control group in the post-treatment period unlike the model with month fixed effects.
 
-There are several explanations for this. Most clearly, since only month fixed effects capture seasonal variation in pollution levels, the significant and larger estimate for the model including them suggests that there is actually a significant difference in pollution levels throughout the year.
+There could be several explanations for this. Most clearly, since only month fixed effects capture seasonal variation in pollution levels, the significant and larger estimate for the model including them suggests that there is actually a significant difference in pollution levels throughout the year which this new model misses.
 
 Another important difference with respect to the month-fixed effects model is that the (adjusted) R-squared has dropped from around 0.75 to 0.67. Hence, month fixed effects do seem to account for more variability in the outcome than year fixed effects.
 
@@ -2300,15 +2372,12 @@ Finally, to address potential non-linearities in the effect of the weather covar
 m5_quad <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 + POST_treat_4 +
             avg_temperature_monthly + I(avg_temperature_monthly^2) +
             total_rain_monthly + I(total_rain_monthly^2) +
-            avg_wind_speed_monthly + I(avg_wind_speed_monthly)^2 + 
+            avg_wind_speed_monthly + I(avg_wind_speed_monthly^2) + 
             wind_direction_monthly + I(wind_direction_monthly^2) +
             avg_pressure_monthly + I(avg_pressure_monthly^2) +
             month,
             model = "within", index = c("station_id"),
             data = did_df)
-
-# T-test with clustered standard errors
-clustered_test_m5_quad <- coeftest(m5_quad, vcov = vcovHC(m5_quad, type = "HC1", cluster = "group"))
 
 # Rename variables 
 variable_labels_q <- c(
@@ -2322,7 +2391,7 @@ variable_labels_q <- c(
   "total_rain_monthly" = "Total Monthly Rain",
   "I(total_rain_monthly2)" = "Squared Total Monthly Rain",
   "avg_wind_speed_monthly" = "Average Monthly Wind Speed",
-  "I(avg_wind_speed_monthly)2" = "Squared Average Monthly Wind Speed",
+  "I(avg_wind_speed_monthly2)" = "Squared Average Monthly Wind Speed",
   "wind_direction_monthly" = "Average Monthly Wind Direction",
   "I(wind_direction_monthly2)" = "Squared Average Monthly Wind Direction",
   "avg_pressure_monthly" = "Average Monthly Pressure",
@@ -2344,19 +2413,22 @@ stargazer(m5_quad,
           covariate.labels = variable_labels_q)
 ```
 
-There are two main changes with the quadratic specification.
 
-First, the coefficients for the meteorological covariates in their linear form have changed quite a lot after the inclusion of squared terms. For instance, the square of total rain is significant and positive (coefficient = 0.0002) while total rain in its linear form has a negative (and also significant) effect on pollution (coefficient = -0.082). Hence, higher rainfall is associated with lower pollution levels but the effect of the former on the later seems to vary as the amount of rain increases. Concerning significance levels, none of the variables that were insignificant in the linear model gain significance in the quadratic one, implying non-linear effects are not that strong.
+There are three main insights gathered from the quadratic specification.
 
-Second, the estimates for the effect of the policy for our four treatment rings are close but slightly bigger in absolute value in the quadratic model. 
+First, the coefficients for the meteorological covariates in their linear form diverge from those assigned to the quadratic terms. For instance, the square of total rain is significant and positive (coefficient = 0.0002) while total rain in its linear form has a negative (and also significant) effect on pollution (coefficient = -0.079). Hence, higher rainfall is associated with lower pollution levels but the effect of the former on the later seems to vary as the amount of rain increases. Concerning significance levels, none of the variables that were insignificant in the linear model gain significance in the quadratic one, implying non-linear effects are not that strong.
+
+Second, the estimates for the effect of the policy for the first treatment ring is close but slightly lower in absolute value in the quadratic model. This change could be explained by potential non-linearities now captured by the squared terms or by multicollinearity due to the addition of variables containing the same information as those already in the model.
+
+Third, the adjusted R-squared has barely increased compared to the original model, indicating that the addition of squared terms does not significantly improve the model fit.
 
 Hence, our results are robust to the quadratic specification of the controls as only one quadratic term is significant and our treatment effect estimates are very close to the ones in the linear model.
 
 ### 6.2. Falsification test I: testing the effects of the treatment on the outcome in a 'placebo' time period
 
-Let's falsify our results. We start by testing the significance of our treatment effect (within the 2.5-kilometre range from Plaza del Carmen since we found no further spillover effects) in years *prior* to the implementation of Madrid Central. This will allow us to assess whether the estimated treatment effect we found is driven by the treatment itself or rather by other factors that may be present in the data. In other words, for our treatment effect to be *robust* we would like to find a lack of statistical significance on our 'POST_treat_1' variable when we specify the treatment took place in the <u>arbitrary date of November 2015</u>.
+Let's falsify our results. We start by testing the significance of our treatment effect (within the 2.5-kilometre range from Plaza del Carmen since we found no further spillover effects) in years *prior* to the implementation of Madrid Central. This will allow us to assess whether the estimated treatment effect we found is driven by the treatment itself or rather by other factors that may be present in the data. In other words, for our treatment effect to be *robust*, we would like to find no statistical significance in the coefficient of our 'POST_treat_1' variable when we specify the treatment took place in the <u>arbitrarily chosen date of November 2015</u>.
 
-We reproduce the steps used above, but this time with data from 2012 to June of 2018 to avoid any anticipatory effects going up to November of 2018 (date of actual implementation of the policy). We also only use the Model 2 specification from Section 5 as (again) it is only for the first treatment ring that we found statistical significance.
+We reproduce the steps used above, but this time with data from 2012 to June of 2018 to avoid any anticipatory effects going up to November of 2018 (date of actual implementation of the policy). We also only use the Model 2 specification from Section 5 as (again) it is only for the first treatment ring that we found statistical significance in the effect of the policy.
 
 **Pollution data for pollution monitoring stations inside the City of Madrid (2012 - 2018)**
 
@@ -2399,10 +2471,10 @@ for (file_name in file_names_r) {
     mutate(month = as.numeric(month), 
            day = as.numeric(day),
            hour = as.numeric(str_replace(hour, "H", "")),
-           #remove leading zeros from 'code' variables
+           # Remove leading zeros from 'code' variables
            town_code = as.factor(str_remove(town_code, "^0+")),
            station_code = as.factor(str_remove(station_code, "^0+")),
-           #replace comma with point for 'pollution_level'
+           # Replace comma with point for 'pollution_level'
            pollution_level = as.numeric(gsub(",", ".", pollution_level)))
     
   # Append the cleaned data to the 'all_city_data_clean' dataframe
@@ -2468,7 +2540,7 @@ com_monthly_r <- all_com_data_clean_r %>%
 
 **Complete dataset of monthly pollution observations for the air quality network of the Community of Madrid**
 
-We merge both sets of data by rows. We also merge in-City pollution data with in-City station data and out-of-City pollution data with out-of-City station data. We merge those two datasets as well.
+We merge both sets of data by row. We also merge in-City pollution data with in-City station data and out-of-City pollution data with out-of-City station data. We merge those two datasets as well.
 
 ```{r}
 # Bind potential treatment with control stations 
@@ -2622,9 +2694,6 @@ m <- plm(pollution_level ~ POST + POST_treat_1 +
               model = "within", index = "station_id",
               data = did_df_r)
 
-# T-test with clustered standard errors
-clustered_test_m <- coeftest(m, vcov = vcovHC(m, type = "HC1", cluster = "group"))
-
 # Rename variables
 variable_labels_r <- c(
   "POST1" = "Post-Treatment",
@@ -2651,7 +2720,7 @@ stargazer(m,
           covariate.labels = variable_labels_r)
 ```
 
-Clearly, the interaction term lacks statistical significance, meaning the "fake treatment" we arbitrarily specified as taking place in November 2015 had no important effects on pollution level in the four stations closest to Plaza del Carmen. This contrasts with the "actual treatment" happening in November 2018, which did have a significant effect for the same four stations. 
+Clearly, the interaction term lacks statistical significance, meaning the "fake treatment" we arbitrarily specified as taking place in November 2015 had no important effects on pollution level in the four stations closest to Plaza del Carmen. This contrasts with the "actual treatment" happening in November 2018, which did have a significant effect on pollution for the same four stations. 
 
 This suggests that the estimated treatment effect during the actual treatment period is more likely to be driven by the treatment itself rather than by other factors, which provides some evidence for the robustness of the results.
 
@@ -2659,7 +2728,7 @@ This suggests that the estimated treatment effect during the actual treatment pe
 
 The second placebo test consists of reproducing our analysis above (same criteria for assigning stations into treatment and same period of intervention) but using an outcome that, in theory, should not be affected (or affected but to a much lower degree) by the treatment. Due to the availability of open data, we select **noise pollution**.
 
-It is true that a potential association between the introduction of an LEZ and average noise levels cannot be completely discarded. Going back to our DAG, Madrid Central could have an effect on noise levels through the traffic redirection mechanism (i.e. fewer cars in the immediacy of Madrid Central, lower average noise levels). However, this effect is likely to be considerably smaller than the one on pollution levels due to (for instance) the neutralization of the fleet recomposition channel.
+It is true that a potential association between the introduction of an LEZ and average noise levels cannot be completely discarded. Going back to our DAG, Madrid Central could have an effect on noise levels through the traffic redirection mechanism (i.e. fewer cars in the immediacy of Madrid Central, lower average noise levels). However, this effect is likely to be considerably smaller than the one on pollution levels due to (for instance) the neutralization of the fleet recomposition channel in this new identification strategy.
 
 **Noise pollution data inside the City of Madrid (2015 - 2021)**
 
@@ -2711,7 +2780,7 @@ all_acus_data_clean <- all_acus_data_clean %>%
   drop_na(avg_24_hours)
 ```
 
-For years 2015 and 2016, data is only available in XLS format (with data for each month stored in separate sheets of the same workbook). We hence used Excel VBA to create a CSV file out of each of these sheets and created another loop to read them. We start with 2016 data and apply similar transformations as we did above.
+For years 2015 and 2016, data is only available in XLS format (with data for each month stored in separate sheets of the same workbook). We hence make use of Excel VBA to create a CSV file out of each of these sheets and set up another loop to read them. We start with 2016 data and apply similar transformations as we did above.
 
 ```{r}
 # Create a vector of month abbreviations in the correct order
@@ -2747,7 +2816,7 @@ for (month in months) {
 }
 ```
 
-Unfortunately there is no available data for the months of June and July of 2015, forcing us to continue our analysis while acknowledging the non-random missigness of data during this period. We load the data and transform it:
+Unfortunately, there is no available data for the months of June and July of 2015, forcing us to continue our analysis while acknowledging the non-random missigness of data during this period. We load the data and transform it:
 
 ```{r}
 # Create a vector of month abbreviations in the correct order
@@ -2786,7 +2855,7 @@ We merge all three datasets into one with monthly observations from 2015 to 2021
 
 ```{r}
 # Bind together observations of all years  
-full_data_acus <- bind_rows(all_acus_data_clean, all_acus_data_clean_2016, all_acus_data_clean_2015) 
+full_data_acus <- bind_rows(all_acus_data_clean, all_acus_data_clean_2016, all_acus_data_clean_2015)
 ```
 
 
@@ -2869,7 +2938,7 @@ acus_stations_clean$closest_weather_station <- weather_stations_r$weather_statio
 
 **Pre-modelling data aggregation and feature engineering**
 
-Now that we have all the data that we need, we merge noise level averages with the information about each station (including rings and closest weather stations) and remove observations after July 2021 to ensure the comparability of results with our main analysis.
+Now that we have all the data that we need, we merge noise level averages with the information about each station (including rings and closest weather stations) and remove observations after July 2021 to ensure our results are comparable to those of our main analysis.
 
 ```{r}
 # Merge data with monthly noise pollution averages and station data 
@@ -2950,7 +3019,7 @@ stargazer(m_noise,
           covariate.labels = variable_labels_r)
 ```
 
-Fortunately, with a p-value of 0.99, the effect of the intervention is found to have insignificant effects on the average noise level in Ring 1 stations. This increases the plausibility of observed effects on air pollution being truly attributable to the LEZ. The validity of our research design is thereby strengthened.
+Luckily, with a p-value of 0.99, the effect of the intervention is found to have insignificant effects on the average noise level in Ring 1 stations. This increases the plausibility of observed effects on air pollution being truly attributable to the LEZ. The validity of our research design is thereby strengthened.
 
 ## 7. APPENDIX
 
@@ -2958,7 +3027,7 @@ This section includes visualizations and tables belonging to the Appendix in the
 
 ### 7.1. Weighted imputation of missing values in the weather controls
 
-As we saw in Section 4.3, the assumption required for multiple imputation (MAR) might not be satisfied as missingness appears to be related to the station. With the hope of improving the reliability of the imputation procedure, we incorporate weights following the approach in Gomila and Clark (2020). Larger weights are assigned to observations that have larger probabilities of going missing and smaller weights are assigned to observations with lower chances of missingness (*Inverse Probability Weighting*, or IPM).
+As we saw in Section 4.3, the assumption required for multiple imputation (MAR) might not be satisfied as missingness appears to be associated with the station. With the hope of improving the reliability of the imputation procedure, we incorporate weights following the approach in Gomila and Clark (2020). Larger weights are assigned to observations that have higher probabilities of going missing and smaller weights are assigned to observations with lower chances of missingness (*Inverse Probability Weighting*, or IPM).
 
 We create a separate dataframe to impute missing values using weights and perform the same transformations as before:
 
@@ -2985,13 +3054,13 @@ weather_full_final_imp <- weather_full %>%
   select(-date) 
 
 # Replace all values of "88" in wind direction with NAs 
-weather_full_final_imp$direction_max_wind_speed <- ifelse(weather_full_final_imp$direction_max_wind_speed == "88", NA,
-                                                      weather_full_final_imp$direction_max_wind_speed)
+weather_full_final_imp$direction_max_wind_speed <- 
+  ifelse(weather_full_final_imp$direction_max_wind_speed == "88", NA,                                                      weather_full_final_imp$direction_max_wind_speed)
 ```
 
 Again, we take the example of minimum pressure and create a variable that takes a value of 1 for available observations and 0 for missing values. We then regress this new variable on the column capturing the weather station using logistic regression, after which we generate probabilities for missingness and the corresponding weights (i.e. inverse of probabilities). 
 
-We then perform imputation by [Weighted Predictive Mean Matching (PMM)](https://search.r-project.org/CRAN/refmans/miceadds/html/mice.impute.weighted.pmm.html) (or Weighted Normal Linear Regression). We incorporate the imputed values into the original dataframe 'weather_full_final_imp'.
+We then perform imputation by [Weighted Predictive Mean Matching (PMM)](https://search.r-project.org/CRAN/refmans/miceadds/html/mice.impute.weighted.pmm.html) (or Weighted Normal Linear Regression). We incorporate the imputed values into the original dataframe, 'weather_full_final_imp'.
 
 ```{r, results = FALSE}
 set.seed(1234)
@@ -3157,8 +3226,7 @@ descriptions <- c("First phase of the transition period. No active cameras, with
 "Infractions first subject to fines ranging up to 90 euros, or 45 euros with early payment.",
 "Suspension of sanctions under the new mayor of Madrid, followed by reinstatement by Court order.",
 "Parking ban on no-label vehicles and two streets released from restrictions (Mártires de Alcalá and Seminario de Nobles).",
-"'Madrid 360' replaces Madrid Central. Changes include the creation of 'Distrito Centro', a new LEZ in Plaza Elíptica and the provision of banning entrance to no-label vehicles into the LEZ starting in January 2022.")
-
+"'Madrid 360' replaces Madrid Central. Changes include the replacement of Madrid Central by the 'Zona de Bajas Emisiones de Especial Protección Distrito Centro', a new LEZ in Plaza Elíptica and the provision of banning entrance to no-label vehicles into the LEZ starting in January 2022.")
 
 # Create dataframe with dates, events and event descriptions
 timeline_df <- data.frame(dates, event, descriptions)
@@ -3176,7 +3244,7 @@ kable(timeline_df, format = "html", row.names = FALSE) %>%
 ```
 
 
-## 8. REFERENCES 
+## REFERENCES 
 
 Gomila, R., and C. S. Clark. 2020. [“Missing Data in Experiments: Challenges and Solutions”](https://www.robingomila.com/files/publications_pdfs/Gomila_Clark_2020_Missing_Data_Challenges_Solutions.pdf). *American Psychological Association*, 27(2): 143–155.
 
