@@ -30,6 +30,7 @@ We begin by loading the necessary libraries for our analysis. Some of them are u
 ```{r, include = TRUE, results = FALSE}
 library(tidyverse)
 library(ggplot2)
+library(here)
 library(zoo)
 library(ggdag)
 library(lubridate)
@@ -53,6 +54,13 @@ library(knitr)
 library(kableExtra)
 library(vistime)
 library(highcharter)
+```
+
+Next, we run the following line to automatically set the working directory to the root directory of the project. This way, our code will work regardless of the current working directory or the location of this file. 
+
+```{r}
+# Set working directory
+setwd(here::here())
 ```
 
 ## 1. DATA PRE-PROCESSING
@@ -1186,6 +1194,41 @@ model_pollution_df <- model_pollution_df %>%
 model_pollution_df$ring <- droplevels(model_pollution_df$ring)
 ```
 
+To visualize our final set of stations after removing the ones in Ring 6, we plot below the 40 pollution monitoring stations (color-coded by ring) and 13 weather stations (represented by red crosses) used in our models:
+
+```{r}
+# Filter out excluded stations from the 'data_all_stations' dataset
+data_all_stations <- data_all_stations %>% 
+  filter(ring != "Ring 6: Excluded")
+
+# Create plot
+ggmap(madrid_map, extent = "normal", maprange = FALSE, alpha = 0.3) +
+  geom_point(data = data_all_stations,
+             aes(x = longitude, y = latitude, color = ring),  
+             size = 1.5) +
+  geom_point(data = weather_stations,
+             aes(x = longitude, y = latitude),
+             color = "red",
+             shape = 4,
+             size = 3) +
+  labs(title = "Location of Weather and Pollution Stations in the Community of Madrid",
+       color = "") +
+  scale_color_manual(values = c("black", 
+                                setNames(ring_colors, levels(data_all_stations$ring))),
+                     labels = c("Ring 1", "Ring 2", "Ring 3", "Ring 4", "Ring 5")) +
+  theme_void() +
+  theme(legend.position = "bottom",
+        legend.background = element_rect(colour = "black", size = 0.3),
+        legend.key.size = unit(0.5, "cm"),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8),
+        legend.box.spacing = unit(0.1, "cm"),
+        legend.box.margin = margin(0, 0, 0, 0),
+        legend.box.background = element_rect(color = "black", linewidth = 0.2),
+        plot.title = element_text(size = 12, hjust = 0.5))
+```
+
+
 ### 5.2. Creation of model variables
 
 #### **Merging of dataframes into a final one with complete information for the model**
@@ -1317,7 +1360,7 @@ mtext("Correlation Plot of Weather Controls and Pollution Level", side = 3, line
 
 It is clear that correlations *among* our weather variables are not excessively high, the largest one being the (obviously negative) association between average temperature and total rain measured on a monthly basis. 
 
-We also see that, among all weather variables, average temperature and average wind speed seem to be the most highly correlated with pollution. Both have moderate negative linear associations with the outcome variable. Pressure, rain and wind direction are barely associated (linearly) with pollution since their correlation coefficients are close to 0. Still, even if some variables may not be highly correlated with the dependent variable in our models, we will still include them because they may have explanatory power *in conjunction with* other variables. Furthermore, these covariates may have non-linear relationships with pollution which would go uncaptured by the correlation coefficient (see Section 6.1.H). More importantly, we should be concerned that *some* of these variables (without concrete knowledge of which) may be responsible for some variability in the dependent variable that must be accounted for to avoid biased estimates in our model. 
+We also see that, among all weather variables, average temperature and average wind speed seem to be the most highly correlated with pollution. Both have moderate negative linear associations with the outcome variable. Pressure, rain and wind direction are barely associated (linearly) with pollution since their correlation coefficients are close to 0. Still, even if some variables may not be highly correlated with the dependent variable in our models, we will still include them because they may have explanatory power *in conjunction with* other variables. Furthermore, these covariates may have non-linear relationships with pollution which would go uncaptured by the correlation coefficient (see Section 6.1.I). More importantly, we should be concerned that *some* of these variables (without concrete knowledge of which) may be responsible for some variability in the dependent variable that must be accounted for to avoid biased estimates in our model. 
 
 ### 5.4. Summary of outcome, explanatory and control variables in the model
 
@@ -1447,7 +1490,7 @@ The models in this section rely on within-group transformations (i.e. 'model' ar
 
 #### **Model 1: first treatment ring without weather controls**
 
-We start with the simplest possible model: we regress the pollution level on the time, treatment and interaction dummies assuming only Plaza del Carmen and the three stations closest to it are treated. We include time (in this case, month) fixed effects since our data is at the monthly level and these are thus likely to capture more variability than year fixed effects (see Section 6.1.G). The model automatically incorporates station fixed effects when we set the 'index' argument equal to "station_id". 
+We start with the simplest possible model: we regress the pollution level on the time, treatment and interaction dummies assuming only Plaza del Carmen and the three stations closest to it are treated. We include time (in this case, month) fixed effects since our data is at the monthly level and these are thus likely to capture more variability than year fixed effects (see Section 6.1.H). The model automatically incorporates station fixed effects when we set the 'index' argument equal to "station_id". 
 
 ```{r}
 # Set up the fixed effects model
@@ -1486,7 +1529,7 @@ Our treatment effect (coefficient for 'POST_treat_1') for the closest four stati
 
 We also see that all levels of the 'month' variable are now significant and have negative coefficients, reflecting the insights introduced in Section 5.1 (Parallel Trends) where aggregate pollution levels showed a negative time trend. In absolute value, the magnitude of this decrease seems to be strongest for the months of May and June and weakest for December as seen in Section 2.4.
 
-We can investigate further how the estimates for Ring 1 vary with time. Instead of using months, we will use years to avoid having an excessive number of time points. For that we use a different package ([`feols()`](https://www.rdocumentation.org/packages/fixest/versions/0.8.4/topics/feols)) to estimate normal OLS with our station and (now) year fixed effects (see Section 6.1.G for more on year fixed effects). We choose the year of implementation, 2018, as reference year (not shown in the plot).
+We can investigate further how the estimates for Ring 1 vary with time. Instead of using months, we will use years to avoid having an excessive number of time points. For that we use a different package ([`feols()`](https://www.rdocumentation.org/packages/fixest/versions/0.8.4/topics/feols)) to estimate normal OLS with our station and (now) year fixed effects (see Section 6.1.H for more on year fixed effects). We choose the year of implementation, 2018, as reference year (not shown in the plot).
 
 We perform a series of transformations and plot our estimates for the treatment effect of Ring 1 stations for each given year:
 
@@ -1705,7 +1748,7 @@ We will start by introducing several changes to the model with the highest numbe
 
 We then run two placebo tests. We use these to test the validity of our causal inference strategy by examining the effect of the intervention on the outcome variable at a time where no effect is expected and by assessing the impact of this same treatment on a theoretically unrelated outcome. 
 
-### 6.1. Modifications to the most complete model
+### 6.1. Modifications of the most complete model
 
 #### **A. Weekly aggregation of model data**  
 
@@ -2305,7 +2348,95 @@ Yet, this does not say anything about the pollution level in the first ring (whi
 
 Hence, we refrain from including this variable in our main models since the estimates are basically the same and the combination of unit fixed effects (for Plaza del Carmen in this case) with month fixed effects should take care of (a lot of) this variability anyway.
 
-#### **G. Model with year fixed effects** 
+#### **G. Additional controls III: model with COVID-19 control**
+
+Along the lines of the previous "robustness check", we want to know if the traffic restrictions implemented to contain the spread of the COVID-19 pandemic in 2020 had any impact on the estimates of the policy effects found above. As a quick reminder, the Spanish national government declared the *State of Alarm* (or *State of Emergency*) on March 14th 2020 and lifted it up on June 21st of that same year. This measure entailed, primarily, a full lockdown with very few exceptions (e.g. grocery shopping, work in essential sectors at first, etc.). Hence, it constituted an unprecedented disruption of normal traffic flows and presumably of pollution levels.
+
+Theoretically, month and station fixed effects should capture all variability triggered by this event as all locations were probably affected very similarly by the restrictions. Still, we perform the same steps as with the Gran Via control and run the model at the end of this chunk:
+
+```{r}
+# Merge pollution and weather data
+did_df_covid <- model_pollution_df %>% 
+  left_join(weather_full_final_a, 
+            by = c("year", "month", "weather_station_name"))
+
+# Create post-treatment dummy (POST = 1 if year is greater than 2018 or if equal to 2018 and the month is December)
+did_df_covid <- did_df_covid %>%
+  mutate(POST = ifelse(year > 2018 | (year == 2018 & month == 12), 1, 0))
+
+# Create treatment dummies for each ring
+did_df_covid <- did_df_covid %>%
+  mutate(treatment_ring1 = ifelse(ring == "Ring 1: Treated", 1, 0),
+         treatment_ring2 = ifelse(ring == "Ring 2: Treated", 1, 0),
+         treatment_ring3 = ifelse(ring == "Ring 3: Treated", 1, 0),
+         treatment_ring4 = ifelse(ring == "Ring 4: Treated", 1, 0))
+
+# Create interaction terms by multiplying POST and each corresponding treatment ring
+did_df_covid <- did_df_covid %>%
+  mutate(POST_treat_1 = POST*as.numeric(treatment_ring1),
+         POST_treat_2 = POST*as.numeric(treatment_ring2),
+         POST_treat_3 = POST*as.numeric(treatment_ring3),
+         POST_treat_4 = POST*as.numeric(treatment_ring4))
+
+# Transform new variables into factors
+did_df_covid <- did_df_covid %>%
+  mutate_if(grepl("treatment_ring|POST_treat|POST", names(.)), ~as.factor(.))
+
+# Create 'station_id' by concatenating 'town_code' and 'station_code', separated by a hyphen
+did_df_covid$station_id <- as.factor(paste(did_df_covid$town_code, did_df_covid$station_code, sep="-"))
+
+# Remove variables
+did_df_covid <- did_df_covid %>% select(-c(min_temperature_monthly, max_temperature_monthly, town_code, station_code))
+
+# Convert month variable to integers and create dummy for 'State of Alarm'
+did_df_covid <- did_df_covid %>%
+  mutate(month = as.integer(month)) %>%
+  mutate(COVID = as.factor(ifelse(year == 2020 & month >= 3 & month <= 6, 1, 0)))
+
+# Convert month variables to strings before modelling
+did_df_covid$month <- as.character(did_df_covid$month)
+
+# Set up the fixed effects model with COVID-19 control
+m5_covid <- plm(pollution_level ~ POST + POST_treat_1 + POST_treat_2 + POST_treat_3 + POST_treat_4 +
+            avg_temperature_monthly + total_rain_monthly + avg_wind_speed_monthly + 
+            wind_direction_monthly + avg_pressure_monthly + 
+            month + as.factor(COVID),
+            model = "within", index = c("station_id"),
+            data = did_df_covid)
+
+# Specify variable names
+variable_labels_covid <- c(
+  "POST1" = "Post-Treatment",
+  "POST_treat_11" = "Post-Treatment*Ring 1",
+  "POST_treat_21" = "Post-Treatment*Ring 2",
+  "POST_treat_31" = "Post-Treatment*Ring 3",
+  "POST_treat_41" = "Post-Treatment*Ring 4",
+  "avg_temperature_monthly" = "Average Monthly Temperature",
+  "total_rain_monthly" = "Total Monthly Rain",
+  "avg_wind_speed_monthly" = "Average Monthly Wind Speed",
+  "wind_direction_monthly" = "Average Monthly Wind Direction",
+  "avg_pressure_monthly" = "Average Monthly Pressure",
+  "as.factor(COVID)1" = "COVID-19")
+
+# Calculate clustered standard errors to export results using `stargazer()`
+se_m5_covid <- se_clustered(m5_covid)
+
+# Export results 
+stargazer(m5_covid, 
+          se = list(se_m5_covid),
+          title = "Regression Results",
+          align = TRUE,
+          type = "text",
+          dep.var.caption = "Dependent Variable: Average Monthly NO2 Concentration",
+          dep.var.labels.include = FALSE,
+          column.labels = c("Model 5 (COVID-19)"),
+          omit = exclude_vars,
+          covariate.labels = variable_labels_covid)
+```
+
+As it was the case with the model in the immediately preceding section, the coefficient of the dummy is statistically significant but the treatment effect estimates have not changed much since its inclusion. This indicates that, as we predicted, model fixed effects may actually be enough to account for pollution variation caused by an external event but occurring within a set window of time and affecting all stations more or less equivalently.
+
+#### **H. Model with year fixed effects** 
 
 The next check entails including year, rather than month, fixed effects in our model. In theory, month fixed effects should perform the same function as year fixed effects by capturing time-related variability in pollution levels affecting all stations equally, yet in a more nuanced way.
 
@@ -2363,7 +2494,7 @@ There could be several explanations for this. Most clearly, since only month fix
 
 Another important difference with respect to the month-fixed effects model is that the (adjusted) R-squared has dropped from around 0.75 to 0.67. Hence, month fixed effects do seem to account for more variability in the outcome than year fixed effects.
 
-#### **H. Model with quadratic specification of the weather covariates**
+#### **I. Model with quadratic specification of the weather covariates**
 
 Finally, to address potential non-linearities in the effect of the weather covariates on the pollution level, we include their squared terms in our regression for Model 5:
 
