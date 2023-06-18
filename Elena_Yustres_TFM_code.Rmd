@@ -578,11 +578,11 @@ ring_colors <- c("#23541e", "#398f33", "#70cc3e", "#a9ff4d", "#1AA7EC", "#b30000
 # Create plot
 ggmap(madrid_map, extent = "normal", maprange = FALSE, alpha = 0.3) +
   geom_point(data = data_all_stations,
-             aes(x = longitude, y = latitude, color = ring),
-             size = 1.5) +
-  scale_color_manual(values = setNames(ring_colors, levels(as.factor(data_all_stations$ring)))) +
+             aes(x = longitude, y = latitude, fill = ring),
+             size = 1.5, shape = 21, color = "black", stroke = 0.1) +
+  scale_fill_manual(values = setNames(ring_colors, levels(as.factor(data_all_stations$ring)))) +
   labs(title = "Location of Pollution Monitoring Stations in the Community of Madrid: Specification by Rings",
-       color = "Ring") +
+       fill = "Ring") +
   theme_void() +
   theme(legend.position = "bottom",
         legend.background = element_rect(colour = "black", size = 0.3),
@@ -1194,7 +1194,7 @@ model_pollution_df <- model_pollution_df %>%
 model_pollution_df$ring <- droplevels(model_pollution_df$ring)
 ```
 
-To visualize our final set of stations after removing the ones in Ring 6, we plot below the 40 pollution monitoring stations (color-coded by ring) and 13 weather stations (represented by red crosses) used in our models:
+After checking the identification assumption and before creating our models' variables, we can visualize the final set of stations resulting from removing the ones in Ring 6. We plot below the 40 pollution monitoring stations (color-coded by ring) and 13 weather stations (represented by purple triangles) used in our models:
 
 ```{r}
 # Filter out excluded stations from the 'data_all_stations' dataset
@@ -1204,18 +1204,25 @@ data_all_stations <- data_all_stations %>%
 # Create plot
 ggmap(madrid_map, extent = "normal", maprange = FALSE, alpha = 0.3) +
   geom_point(data = data_all_stations,
-             aes(x = longitude, y = latitude, color = ring),  
-             size = 1.5) +
+             aes(x = longitude, y = latitude, fill = ring),
+             shape = 21,
+             size = 1.5, 
+             color = "black", 
+             stroke = 0.1) +
   geom_point(data = weather_stations,
-             aes(x = longitude, y = latitude),
-             color = "red",
-             shape = 4,
-             size = 3) +
-  labs(title = "Location of Weather and Pollution Stations in the Community of Madrid",
-       color = "") +
-  scale_color_manual(values = c("black", 
-                                setNames(ring_colors, levels(data_all_stations$ring))),
-                     labels = c("Ring 1", "Ring 2", "Ring 3", "Ring 4", "Ring 5")) +
+             aes(x = longitude, y = latitude, shape = "Weather Station"),
+             fill = "purple",
+             size = 1.5,
+             color = "black",
+             stroke = 0.1) +
+  labs(title = "Location of Pollution and Weather Stations in the Community of Madrid",
+       fill = "",
+       shape = "") +
+  scale_fill_manual(values = setNames(ring_colors, levels(data_all_stations$ring)),
+                    labels = c("Ring 1", "Ring 2", "Ring 3", "Ring 4", "Ring 5")) +
+  scale_shape_manual(values = c("Weather Station" = 24),
+                     labels = c("Weather stations")) +
+  guides(fill = guide_legend(override.aes = list(shape = c(21, 21, 21, 21, 21)) )) +
   theme_void() +
   theme(legend.position = "bottom",
         legend.background = element_rect(colour = "black", size = 0.3),
@@ -1227,7 +1234,6 @@ ggmap(madrid_map, extent = "normal", maprange = FALSE, alpha = 0.3) +
         legend.box.background = element_rect(color = "black", linewidth = 0.2),
         plot.title = element_text(size = 12, hjust = 0.5))
 ```
-
 
 ### 5.2. Creation of model variables
 
@@ -3338,7 +3344,7 @@ Finally, we create a table with a brief explanation of the changes taking place 
 # Define dates
 dates <- c("30th November, 2018",
            "1st January, 2019", 
-           "15th March, 2019", 
+           "16th March, 2019", 
            "1st - 7th July, 2019",
            "1st January, 2020",
            "July, 2021")
